@@ -33,7 +33,7 @@
   "payment_successful": "✅ Payment successful! Your <b>{months} months</b> subscription is active until <b>{end_date}</b>.",
   "payment_failed": "❌ Payment failed/cancelled. If debited, contact support.",
   "payment_description_subscription": "{months}-Month Subscription",
-  "my_subscription_details": "ℹ️ <b>Your Subscription</b>\n\n🗓️ Ends: <b>{end_date}</b> (Days left: {days_left})\n🔗 Link: <code>{config_link}</code>\n📊 Traffic: {traffic_used} / {traffic_limit}\n💡 Panel: {status}",
+  "my_subscription_details": "ℹ️ <b>Your Subscription</b>\n\n🗓️ Ends: <b>{end_date}</b> (Days left: {days_left})\n\n🔗 Link: <code>{config_link}</code>\n\n📊 Traffic: {traffic_used} / {traffic_limit}\n💡 Panel: {status}",
   "subscription_not_active": "No active subscription. Subscribe now!",
   "config_link_not_available": "N/A (Try /sync or contact support)",
   "traffic_unlimited": "Unlimited",
