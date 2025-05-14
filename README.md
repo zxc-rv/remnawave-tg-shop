@@ -64,7 +64,7 @@ This Telegram bot is designed to automate the sale and management of subscriptio
 
 ### Configuration Steps
 
-1.  **Clone the Repository (if applicable):**
+1.  **Clone the Repository:**
     ```bash
     git clone https://github.com/machka-pasla/remnawave-tg-shop
     cd remnawave-tg-shop
