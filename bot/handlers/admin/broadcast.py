@@ -186,7 +186,7 @@ async def confirm_broadcast_callback_handler(callback: types.CallbackQuery,
                     f"For user {user_id}: {type(e).__name__} - {str(e)[:70]}...",
                     is_admin_event=True,
                     target_user_id=user_id)
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(0.05)
 
         result_message = _("admin_broadcast_finished_stats",
                            sent_count=sent_count,
