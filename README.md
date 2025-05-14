@@ -66,8 +66,8 @@ This Telegram bot is designed to automate the sale and management of subscriptio
 
 1.  **Clone the Repository (if applicable):**
     ```bash
-    git clone https://github.com/machka-pasla/remnawave-tg-shop
-    cd remnawave-tg-shop
+    git clone <your-repo-url>
+    cd <your-repo-directory>
     ```
 
 2.  **Create an `.env` File:**
@@ -213,8 +213,11 @@ networks:
 
 Contributions are welcome! 
 
-## 🔮 Future Enhancements (Example Section)
+## 🔮 Future Enhancements
 
 -   More detailed analytics for admin.
 -   Support for different payment methods.
 -   Advanced promo code types (e.g., percentage discounts).
+
+## Donations (pls)
+- Russian and international cards [LINK](https://t.me/tribute/app?startapp=dqdg)
