@@ -1,0 +1,15 @@
+services:
+  vpn-shop:
+    build: .
+    container_name: vpn-shop
+    hostname: vpn-shop
+    networks:
+      - remnawave-network
+    volumes:
+      - ./bot_database.sqlite3:/app/bot_database.sqlite3
+      - ./locales:/app/locales
+    restart: unless-stopped
+
+networks:
+  remnawave-network:
+    external: true
