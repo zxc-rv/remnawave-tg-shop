@@ -3,6 +3,8 @@ services:
     build: .
     container_name: vpn-shop
     hostname: vpn-shop
+    env_file:
+      - .env
     networks:
       - remnawave-network
     volumes:
