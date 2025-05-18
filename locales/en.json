@@ -10,13 +10,14 @@
   "error_try_again": "An error occurred. Please try again.",
 
   "menu_subscribe_inline": "🚀 Buy",
-  "menu_my_subscription_inline": "📄 My Sub/Config",
+  "menu_my_subscription_inline": "📆 My Sub/Config",
   "menu_referral_inline": "🎁 Referrals",
   "menu_apply_promo_button": "🎁 Promo Code",
   "menu_activate_trial_button": "🆓 Activate Trial",
   "menu_language_settings_inline": "🌐 Language",
   "menu_server_status_button": "📊 Status",
   "menu_support_button": "💬 Support",
+  "menu_terms_button": "📄 Terms Of Service",
   "back_to_main_menu_button": "⬅️ Main Menu",
 
   "no_subscription_options_available": "Subscription options are currently unavailable.",

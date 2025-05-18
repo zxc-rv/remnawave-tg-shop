@@ -1,8 +1,8 @@
 services:
   vpn-shop:
     build: .
-    container_name: vpn-shop
-    hostname: vpn-shop
+    container_name: vpn-shop-stable
+    hostname: vpn-shop-stable
     env_file:
       - .env
     networks:

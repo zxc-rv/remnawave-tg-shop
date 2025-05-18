@@ -21,7 +21,6 @@ def get_main_menu_inline_keyboard(
     builder.row(
         InlineKeyboardButton(text=_(key="menu_subscribe_inline"),
                              callback_data="main_action:subscribe"))
-
     builder.row(
         InlineKeyboardButton(text=_(key="menu_my_subscription_inline"),
                              callback_data="main_action:my_subscription"))
@@ -52,6 +51,11 @@ def get_main_menu_inline_keyboard(
         builder.row(
             InlineKeyboardButton(text=_(key="menu_support_button"),
                                  url=settings.SUPPORT_LINK))
+
+    if settings.TERMS_OF_SERVICE_URL:
+        builder.row(
+            InlineKeyboardButton(text=_(key="menu_terms_button"),
+                                 url=settings.TERMS_OF_SERVICE_URL))
 
     return builder.as_markup()
 

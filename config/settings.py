@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     SERVER_STATUS_URL: Optional[str] = Field(
         default=None,
         description="Link to server status page (e.g., Uptime Kuma)")
+    TERMS_OF_SERVICE_URL: Optional[str] = Field(
+        default=None, description="Link to Terms of Use page")
 
     YOOKASSA_SHOP_ID: Optional[str] = None
     YOOKASSA_SECRET_KEY: Optional[str] = None
@@ -32,10 +34,7 @@ class Settings(BaseSettings):
         default=None,
         description="Default email for YooKassa receipts (REQUIRED for 54-FZ)")
     YOOKASSA_VAT_CODE: int = Field(
-        default=6,
-        description=
-        "YooKassa VAT code (e.g., 1=20%, 2=10%, 4=0%, 6=No VAT - check YooKassa docs!)"
-    )
+        default=1, description="YooKassa VAT code (check YooKassa docs!)")
     YOOKASSA_PAYMENT_MODE: str = Field(
         default="full_prepayment",
         description=
