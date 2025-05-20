@@ -6,10 +6,10 @@ services:
     hostname: remnawave-tg-shop
     env_file:
       - .env
-    networks:
-      - remnawave-network
-    volumes:
-      - ./locales:/app/locales
+#    networks:
+#      - remnawave-network
+#    volumes:
+#      - ./locales:/app/locales
     restart: unless-stopped
 
   postgres:
@@ -19,13 +19,13 @@ services:
       - .env
     volumes:
       - remnawave-tg-shop-db-data:/var/lib/postgresql/data
-    networks:
-      - remnawave-network
+#    networks:
+#      - remnawave-network
     restart: unless-stopped
 
-networks:
-  remnawave-network:
-    external: true
+# networks:
+#   remnawave-network:
+#     external: true
 
 volumes:
   remnawave-tg-shop-db-data:
