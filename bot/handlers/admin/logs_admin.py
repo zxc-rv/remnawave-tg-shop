@@ -4,18 +4,18 @@ import re
 from aiogram import Router, F, types, Bot
 from aiogram.fsm.context import FSMContext
 from typing import Optional, List, Dict, Any
-import aiosqlite
+
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from config.settings import Settings
-from db.database import (get_all_message_logs_paginated,
-                         count_all_message_logs,
-                         get_user_message_logs_paginated,
-                         count_user_message_logs, get_user,
-                         get_user_by_telegram_username)
+
+from db.dal import message_log_dal, user_dal
+from db.models import MessageLog, User
+
 from bot.states.admin_states import AdminStates
 from bot.keyboards.inline.admin_keyboards import (
     get_logs_menu_keyboard, get_logs_pagination_keyboard,
-    get_back_to_admin_panel_keyboard, get_admin_panel_keyboard)
+    get_back_to_admin_panel_keyboard)
 from bot.middlewares.i18n import JsonI18n
 
 router = Router(name="admin_logs_router")
@@ -23,19 +23,13 @@ USERNAME_REGEX = re.compile(r"^[a-zA-Z0-9_]{5,32}$")
 
 
 async def display_logs_menu(callback: types.CallbackQuery, i18n_data: dict,
-                            settings: Settings):
+                            settings: Settings, session: AsyncSession):
     current_lang = i18n_data.get("current_language", settings.DEFAULT_LANGUAGE)
     i18n: Optional[JsonI18n] = i18n_data.get("i18n_instance")
 
-    if not i18n:
-        logging.error("i18n_instance missing in display_logs_menu")
-        await callback.answer("Language service error.", show_alert=True)
+    if not i18n or not callback.message:
+        await callback.answer("Error displaying logs menu.", show_alert=True)
         return
-    if not callback.message:
-        logging.error("CallbackQuery has no message in display_logs_menu")
-        await callback.answer("Error processing request.", show_alert=True)
-        return
-
     _ = lambda key, **kwargs: i18n.gettext(current_lang, key, **kwargs)
 
     try:
@@ -43,7 +37,8 @@ async def display_logs_menu(callback: types.CallbackQuery, i18n_data: dict,
                                          reply_markup=get_logs_menu_keyboard(
                                              i18n, current_lang))
     except Exception as e:
-        logging.warning(f"Failed to edit message for logs menu: {e}")
+        logging.warning(
+            f"Failed to edit message for logs menu: {e}. Sending new.")
         await callback.message.answer(text=_(key="admin_logs_menu_title"),
                                       reply_markup=get_logs_menu_keyboard(
                                           i18n, current_lang))
@@ -51,9 +46,9 @@ async def display_logs_menu(callback: types.CallbackQuery, i18n_data: dict,
 
 
 async def _display_formatted_logs(target_message: types.Message,
-                                  logs: List[aiosqlite.Row],
+                                  logs: List[MessageLog],
                                   total_logs: int,
-                                  current_page: int,
+                                  current_page_idx: int,
                                   settings: Settings,
                                   title_key: str,
                                   base_pagination_callback_data: str,
@@ -63,7 +58,6 @@ async def _display_formatted_logs(target_message: types.Message,
                                                               Any]] = None):
     _ = lambda key, **kwargs: i18n.gettext(current_lang, key, **kwargs)
     page_size = settings.LOGS_PAGE_SIZE
-
     actual_title_kwargs = title_kwargs or {}
 
     if not logs and total_logs == 0:
@@ -71,7 +65,7 @@ async def _display_formatted_logs(target_message: types.Message,
             title_key, current_page=1, total_pages=1, **
             actual_title_kwargs) + "\n\n" + _("admin_no_logs_found")
         reply_markup = get_logs_pagination_keyboard(
-            current_page,
+            current_page_idx,
             1,
             base_pagination_callback_data,
             i18n,
@@ -80,55 +74,46 @@ async def _display_formatted_logs(target_message: types.Message,
     else:
         total_pages = math.ceil(total_logs / page_size) if page_size > 0 else 1
         text = _(title_key,
-                 current_page=current_page + 1,
+                 current_page=current_page_idx + 1,
                  total_pages=max(1, total_pages),
                  **actual_title_kwargs) + "\n"
 
         log_entries_text = []
-        for log_entry in logs:
+        for log_entry_model in logs:
             user_display_parts = []
-
-            telegram_first_name = log_entry[
-                'telegram_first_name'] if 'telegram_first_name' in log_entry.keys(
-                ) and log_entry['telegram_first_name'] else None
-            telegram_username = log_entry[
-                'telegram_username'] if 'telegram_username' in log_entry.keys(
-                ) and log_entry['telegram_username'] else None
-            user_id_from_log = log_entry[
-                'user_id'] if 'user_id' in log_entry.keys(
-                ) and log_entry['user_id'] else None
-
-            if telegram_first_name:
-                user_display_parts.append(telegram_first_name)
-            if telegram_username:
-                user_display_parts.append(f"(@{telegram_username})")
+            if log_entry_model.telegram_first_name:
+                user_display_parts.append(log_entry_model.telegram_first_name)
+            if log_entry_model.telegram_username:
+                user_display_parts.append(
+                    f"(@{log_entry_model.telegram_username})")
 
             user_display = " ".join(user_display_parts).strip()
             if not user_display:
                 user_display = _(
                     "system_or_unknown_user"
-                ) if not user_id_from_log else f"ID: {user_id_from_log}"
+                ) if not log_entry_model.user_id else f"ID: {log_entry_model.user_id}"
 
             user_id_display = str(
-                user_id_from_log) if user_id_from_log is not None else "N/A"
-            content_raw = log_entry['content'] if 'content' in log_entry.keys(
-            ) and log_entry['content'] else ""
+                log_entry_model.user_id
+            ) if log_entry_model.user_id is not None else "N/A"
+            content_raw = log_entry_model.content or ""
             content_preview = (content_raw[:100] +
                                "...") if len(content_raw) > 100 else (
                                    content_raw or "N/A")
 
+            timestamp_str_display = log_entry_model.timestamp.strftime(
+                '%Y-%m-%d %H:%M:%S') if log_entry_model.timestamp else 'N/A'
+
             log_entries_text.append(
                 _("admin_log_entry_format",
-                  timestamp_str=log_entry['timestamp_str']
-                  if 'timestamp_str' in log_entry.keys() else 'N/A',
+                  timestamp_str=timestamp_str_display,
                   user_display=user_display,
                   user_id=user_id_display,
-                  event_type=log_entry['event_type']
-                  if 'event_type' in log_entry.keys() else 'N/A',
+                  event_type=log_entry_model.event_type or 'N/A',
                   content_preview=content_preview).replace("\n", "\n  "))
         text += "\n\n".join(log_entries_text)
         reply_markup = get_logs_pagination_keyboard(
-            current_page,
+            current_page_idx,
             total_pages,
             base_pagination_callback_data,
             i18n,
@@ -142,30 +127,40 @@ async def _display_formatted_logs(target_message: types.Message,
                                        disable_web_page_preview=True)
     except Exception as e:
         logging.warning(
-            f"Failed to edit message for logs display: {e}. Content length: {len(text)}"
+            f"Failed to edit message for logs display (len: {len(text)}): {e}. Sending new message(s)."
         )
-        chunk_size = 4000
-        for i in range(0, len(text), chunk_size):
-            chunk = text[i:i + chunk_size]
-            is_last_chunk = (i + chunk_size) >= len(text)
-            await target_message.answer(
-                chunk,
-                reply_markup=reply_markup if is_last_chunk else None,
-                parse_mode="HTML",
-                disable_web_page_preview=True)
+
+        max_chunk_size = 4000
+        for i in range(0, len(text), max_chunk_size):
+            chunk = text[i:i + max_chunk_size]
+            is_last_chunk = (i + max_chunk_size) >= len(text)
+            try:
+                await target_message.answer(
+                    chunk,
+                    reply_markup=reply_markup if is_last_chunk else None,
+                    parse_mode="HTML",
+                    disable_web_page_preview=True)
+            except Exception as e_chunk:
+                logging.error(f"Failed to send log chunk: {e_chunk}")
+
+                if i == 0:
+                    await target_message.answer(
+                        _("error_displaying_logs_too_long"),
+                        reply_markup=reply_markup if is_last_chunk else None)
+                break
 
 
 @router.callback_query(F.data.startswith("admin_logs:view_all"))
 async def view_all_logs_handler(callback: types.CallbackQuery,
-                                settings: Settings, i18n_data: dict):
-    page = 0
+                                settings: Settings, i18n_data: dict,
+                                session: AsyncSession):
+    page_idx = 0
     parts = callback.data.split(":")
-
     if len(parts) == 3:
         try:
-            page = int(parts[2])
+            page_idx = int(parts[2])
         except ValueError:
-            page = 0
+            page_idx = 0
 
     i18n: Optional[JsonI18n] = i18n_data.get("i18n_instance")
     current_lang = i18n_data.get("current_language", settings.DEFAULT_LANGUAGE)
@@ -173,15 +168,15 @@ async def view_all_logs_handler(callback: types.CallbackQuery,
         await callback.answer("Error processing request.", show_alert=True)
         return
 
-    logs, total_logs = await get_all_message_logs_paginated(
-        settings.LOGS_PAGE_SIZE,
-        page * settings.LOGS_PAGE_SIZE), await count_all_message_logs()
+    logs_models = await message_log_dal.get_all_message_logs(
+        session, settings.LOGS_PAGE_SIZE, page_idx * settings.LOGS_PAGE_SIZE)
+    total_logs_count = await message_log_dal.count_all_message_logs(session)
 
     await _display_formatted_logs(
         target_message=callback.message,
-        logs=logs,
-        total_logs=total_logs,
-        current_page=page,
+        logs=logs_models,
+        total_logs=total_logs_count,
+        current_page_idx=page_idx,
         settings=settings,
         title_key="admin_all_logs_title",
         base_pagination_callback_data="admin_logs:view_all",
@@ -193,11 +188,13 @@ async def view_all_logs_handler(callback: types.CallbackQuery,
 @router.callback_query(F.data == "admin_logs:prompt_user")
 async def prompt_user_for_logs_handler(callback: types.CallbackQuery,
                                        state: FSMContext, i18n_data: dict,
-                                       settings: Settings):
+                                       settings: Settings,
+                                       session: AsyncSession):
     i18n: Optional[JsonI18n] = i18n_data.get("i18n_instance")
     current_lang = i18n_data.get("current_language", settings.DEFAULT_LANGUAGE)
     if not i18n or not callback.message:
-        await callback.answer("Error")
+        await callback.answer("Error preparing user log prompt.",
+                              show_alert=True)
         return
     _ = lambda key, **kwargs: i18n.gettext(current_lang, key, **kwargs)
 
@@ -211,103 +208,106 @@ async def prompt_user_for_logs_handler(callback: types.CallbackQuery,
 @router.message(AdminStates.waiting_for_user_id_for_logs, F.text)
 async def process_user_id_for_logs_handler(message: types.Message,
                                            state: FSMContext,
-                                           settings: Settings,
-                                           i18n_data: dict):
-    current_state_fsm = await state.get_state()
-    logging.info(
-        f"Processing user input for logs in state {current_state_fsm}: '{message.text}'"
-    )
+                                           settings: Settings, i18n_data: dict,
+                                           session: AsyncSession):
     await state.clear()
 
     i18n: Optional[JsonI18n] = i18n_data.get("i18n_instance")
     current_lang = i18n_data.get("current_language", settings.DEFAULT_LANGUAGE)
     if not i18n:
-        await message.reply("Language error.")
+        await message.reply("Language service error.")
         return
     _ = lambda key, **kwargs: i18n.gettext(current_lang, key, **kwargs)
 
-    input_text = message.text.strip()
-    user_data_for_logs: Optional[aiosqlite.Row] = None
+    input_text = message.text.strip() if message.text else ""
+    user_model_for_logs: Optional[User] = None
 
     if input_text.isdigit():
         try:
-            user_data_for_logs = await get_user(int(input_text))
+            user_model_for_logs = await user_dal.get_user_by_id(
+                session, int(input_text))
         except ValueError:
             pass
     elif input_text.startswith("@") and USERNAME_REGEX.match(input_text[1:]):
-        user_data_for_logs = await get_user_by_telegram_username(input_text[1:]
-                                                                 )
+        user_model_for_logs = await user_dal.get_user_by_username(
+            session, input_text[1:])
     elif USERNAME_REGEX.match(input_text):
-        user_data_for_logs = await get_user_by_telegram_username(input_text)
+        user_model_for_logs = await user_dal.get_user_by_username(
+            session, input_text)
 
-    if not user_data_for_logs:
+    if not user_model_for_logs:
         await message.answer(_("admin_log_user_not_found", input=input_text))
         return
 
-    target_user_id = user_data_for_logs['user_id']
-    user_display = user_data_for_logs['first_name'] or (
-        f"@{user_data_for_logs['username']}"
-        if user_data_for_logs.get('username') else f"ID {target_user_id}")
+    target_user_id = user_model_for_logs.user_id
+    user_display_name = user_model_for_logs.first_name or (
+        f"@{user_model_for_logs.username}"
+        if user_model_for_logs.username else f"ID {target_user_id}")
 
-    logs, total_logs = await get_user_message_logs_paginated(
-        target_user_id, settings.LOGS_PAGE_SIZE,
-        0), await count_user_message_logs(target_user_id)
+    logs_models = await message_log_dal.get_user_message_logs(
+        session, target_user_id, settings.LOGS_PAGE_SIZE, 0)
+    total_user_logs_count = await message_log_dal.count_user_message_logs(
+        session, target_user_id)
 
     await _display_formatted_logs(
         target_message=message,
-        logs=logs,
-        total_logs=total_logs,
-        current_page=0,
+        logs=logs_models,
+        total_logs=total_user_logs_count,
+        current_page_idx=0,
         settings=settings,
         title_key="admin_user_logs_title",
         base_pagination_callback_data=f"admin_logs:view_user:{target_user_id}",
         i18n=i18n,
         current_lang=current_lang,
-        title_kwargs={"user_display": user_display})
+        title_kwargs={"user_display": user_display_name})
 
 
 @router.callback_query(F.data.startswith("admin_logs:view_user:"))
 async def view_user_logs_paginated_handler(callback: types.CallbackQuery,
-                                           settings: Settings,
-                                           i18n_data: dict):
+                                           settings: Settings, i18n_data: dict,
+                                           session: AsyncSession):
     try:
         parts = callback.data.split(":")
         target_user_id = int(parts[2])
-        page = int(parts[3])
+        page_idx = int(parts[3])
     except (IndexError, ValueError):
-        await callback.answer("Invalid log request.", show_alert=True)
+        await callback.answer("Invalid log request format.", show_alert=True)
         return
 
     i18n: Optional[JsonI18n] = i18n_data.get("i18n_instance")
     current_lang = i18n_data.get("current_language", settings.DEFAULT_LANGUAGE)
     if not i18n or not callback.message:
-        await callback.answer("Error")
+        await callback.answer("Error processing request.", show_alert=True)
         return
 
-    user_data_for_logs = await get_user(target_user_id)
-    if not user_data_for_logs:
+    user_model_for_logs = await user_dal.get_user_by_id(
+        session, target_user_id)
+    if not user_model_for_logs:
         await callback.message.edit_text("User not found for logs.")
         await callback.answer()
         return
-    user_display = user_data_for_logs['first_name'] or (
-        f"@{user_data_for_logs['username']}"
-        if user_data_for_logs.get('username') else f"ID {target_user_id}")
 
-    logs, total_logs = await get_user_message_logs_paginated(
-        target_user_id, settings.LOGS_PAGE_SIZE, page *
-        settings.LOGS_PAGE_SIZE), await count_user_message_logs(target_user_id)
+    user_display_name = user_model_for_logs.first_name or (
+        f"@{user_model_for_logs.username}"
+        if user_model_for_logs.username else f"ID {target_user_id}")
+
+    logs_models = await message_log_dal.get_user_message_logs(
+        session, target_user_id, settings.LOGS_PAGE_SIZE,
+        page_idx * settings.LOGS_PAGE_SIZE)
+    total_user_logs_count = await message_log_dal.count_user_message_logs(
+        session, target_user_id)
 
     await _display_formatted_logs(
         target_message=callback.message,
-        logs=logs,
-        total_logs=total_logs,
-        current_page=page,
+        logs=logs_models,
+        total_logs=total_user_logs_count,
+        current_page_idx=page_idx,
         settings=settings,
         title_key="admin_user_logs_title",
         base_pagination_callback_data=f"admin_logs:view_user:{target_user_id}",
         i18n=i18n,
         current_lang=current_lang,
-        title_kwargs={"user_display": user_display})
+        title_kwargs={"user_display": user_display_name})
     await callback.answer()
 
 
@@ -316,6 +316,8 @@ async def view_user_logs_paginated_handler(callback: types.CallbackQuery,
 async def cancel_log_user_input_state_to_menu(callback: types.CallbackQuery,
                                               state: FSMContext,
                                               settings: Settings,
-                                              i18n_data: dict):
+                                              i18n_data: dict,
+                                              session: AsyncSession):
     await state.clear()
-    await display_logs_menu(callback, i18n_data, settings)
+
+    await display_logs_menu(callback, i18n_data, settings, session)

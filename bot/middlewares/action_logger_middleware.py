@@ -1,11 +1,12 @@
 import logging
-import json
-from typing import Callable, Dict, Any, Awaitable, Union, Optional
+from typing import Callable, Dict, Any, Awaitable, Optional
+from datetime import datetime, timezone
 
 from aiogram import BaseMiddleware
-from aiogram.types import Update, Message, CallbackQuery, User
+from aiogram.types import Update, User, Message, CallbackQuery
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from db.database import log_user_action
+from db.dal import message_log_dal, user_dal
 from config.settings import Settings
 
 
@@ -19,72 +20,82 @@ class ActionLoggerMiddleware(BaseMiddleware):
                                                Awaitable[Any]], event: Update,
                        data: Dict[str, Any]) -> Any:
 
+        result = await handler(event, data)
+
+        session: AsyncSession = data["session"]
         event_user: Optional[User] = data.get("event_from_user")
-        bot: Optional[Bot] = data.get("bot")
 
         user_id: Optional[int] = None
         telegram_username: Optional[str] = None
         telegram_first_name: Optional[str] = None
-        event_type: str = event.event_type
         content: Optional[str] = None
         is_admin_event_flag: bool = False
+        target_user_id_for_log: Optional[int] = None
 
         if event_user:
             user_id = event_user.id
             telegram_username = event_user.username
             telegram_first_name = event_user.first_name
-            if user_id == self.settings.ADMIN_IDS:
+            if user_id in self.settings.ADMIN_IDS:
                 is_admin_event_flag = True
 
         raw_update_snippet = None
         try:
-
             raw_update_snippet = event.model_dump_json(exclude_none=True,
                                                        indent=None)[:1000]
+        except AttributeError:
+            raw_update_snippet = str(event)[:1000]
         except Exception:
             raw_update_snippet = str(event)[:1000]
 
+        current_event_type = event.event_type
+
         if event.message:
-            msg = event.message
+            msg: Message = event.message
             if msg.text:
                 content = msg.text
                 if msg.text.startswith('/'):
-                    event_type = "command"
-            elif msg.caption:
-                content = f"[{msg.content_type}] {msg.caption}"
+                    current_event_type = f"command:{msg.text.split()[0]}"
+
             else:
-                content = f"[{msg.content_type}]"
-
+                content = f"[{msg.content_type or 'unknown_content_type'}]"
+                current_event_type = f"message:{msg.content_type or 'unknown'}"
         elif event.callback_query:
-            cb = event.callback_query
-            event_type = "callback_query"
+            cb: CallbackQuery = event.callback_query
             content = cb.data
+            action_part = cb.data.split(
+                ":")[0] if cb.data and ":" in cb.data else cb.data
+            current_event_type = f"callback:{action_part}"
 
-        if user_id and event_type and content:
+        if user_id or current_event_type not in ["update"]:
+
+            log_user_id_for_db = user_id
+            if user_id:
+                user_exists = await user_dal.get_user_by_id(session, user_id)
+                if not user_exists:
+                    logging.warning(
+                        f"ActionLoggerMiddleware: User {user_id} not found in DB. Logging action with user_id=NULL."
+                    )
+                    log_user_id_for_db = None
+
+            log_payload = {
+                "user_id": log_user_id_for_db,
+                "telegram_username": telegram_username,
+                "telegram_first_name": telegram_first_name,
+                "event_type": current_event_type,
+                "content": content[:1000] if content else "N/A",
+                "raw_update_preview": raw_update_snippet,
+                "is_admin_event": is_admin_event_flag,
+                "target_user_id": target_user_id_for_log,
+                "timestamp": datetime.now(timezone.utc)
+            }
             try:
-                await log_user_action(user_id=user_id,
-                                      telegram_username=telegram_username,
-                                      telegram_first_name=telegram_first_name,
-                                      event_type=event_type,
-                                      content=content[:1000],
-                                      raw_update_preview=raw_update_snippet,
-                                      is_admin_event=is_admin_event_flag)
+
+                await message_log_dal.create_message_log_no_commit(
+                    session, log_payload)
             except Exception as e_log:
                 logging.error(
-                    f"ActionLoggerMiddleware: Failed to log event for user {user_id}: {e_log}",
-                    exc_info=True)
-        elif user_id and event_type:
-            try:
-                await log_user_action(user_id=user_id,
-                                      telegram_username=telegram_username,
-                                      telegram_first_name=telegram_first_name,
-                                      event_type=event_type,
-                                      content="N/A",
-                                      raw_update_preview=raw_update_snippet,
-                                      is_admin_event=is_admin_event_flag)
-            except Exception as e_log:
-                logging.error(
-                    f"ActionLoggerMiddleware: Failed to log event (no content) for user {user_id}: {e_log}",
+                    f"ActionLoggerMiddleware: Failed to add log to session for user {user_id}, type {current_event_type}: {e_log}",
                     exc_info=True)
 
-        return await handler(event, data)
+        return result

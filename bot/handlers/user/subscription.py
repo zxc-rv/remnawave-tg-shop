@@ -1,15 +1,12 @@
 import logging
-import aiosqlite
 from aiogram import Router, F, types, Bot
 from aiogram.filters import Command
-from aiogram.fsm.context import FSMContext
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Union
 from datetime import datetime, timezone
-from aiogram.utils.keyboard import InlineKeyboardBuilder
-from aiogram.types import InlineKeyboardMarkup
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from config.settings import Settings
-from db.database import add_payment_record, get_db_connection_manager, _setup_db_connection
+from db.dal import payment_dal
 from bot.keyboards.inline.user_keyboards import (
     get_subscription_options_keyboard, get_confirm_subscription_keyboard,
     get_payment_url_keyboard, get_back_to_main_menu_markup)
@@ -21,307 +18,345 @@ from bot.middlewares.i18n import JsonI18n
 router = Router(name="user_subscription_router")
 
 
-async def display_subscription_options(message_or_callback: types.Message
-                                       | types.CallbackQuery, i18n_data: dict,
-                                       settings: Settings):
-    current_lang = i18n_data.get("current_language",
-                                 getattr(settings, 'DEFAULT_LANGUAGE', 'en'))
+async def display_subscription_options(event: Union[types.Message,
+                                                    types.CallbackQuery],
+                                       i18n_data: dict, settings: Settings,
+                                       session: AsyncSession):
+    current_lang = i18n_data.get("current_language", settings.DEFAULT_LANGUAGE)
     i18n: Optional[JsonI18n] = i18n_data.get("i18n_instance")
-    if not i18n:
-        logging.error("i18n missing in display_subscription_options")
 
-        target_msg = message_or_callback.message if isinstance(
-            message_or_callback, types.CallbackQuery) else message_or_callback
-        if target_msg: await target_msg.answer("Language service error.")
-        if isinstance(message_or_callback, types.CallbackQuery):
-            await message_or_callback.answer()
+    get_text = lambda key, **kwargs: i18n.gettext(current_lang, key, **kwargs
+                                                  ) if i18n else key
+
+    if not i18n:
+        err_msg = "Language service error."
+        if isinstance(event, types.CallbackQuery):
+            await event.answer(err_msg, show_alert=True)
+        elif isinstance(event, types.Message):
+            await event.answer(err_msg)
         return
 
-    get_translation = lambda key, **kwargs: i18n.gettext(
-        current_lang, key, **kwargs)
     currency_symbol_val = settings.DEFAULT_CURRENCY_SYMBOL
+    text_content = get_text("select_subscription_period"
+                            ) if settings.subscription_options else get_text(
+                                "no_subscription_options_available")
 
-    text = get_translation(
-        "select_subscription_period"
-    ) if settings.subscription_options else get_translation(
-        "no_subscription_options_available")
     reply_markup = get_subscription_options_keyboard(
-        settings.subscription_options, currency_symbol_val, current_lang,
-        i18n) if settings.subscription_options else None
+        settings.subscription_options, currency_symbol_val, current_lang, i18n
+    ) if settings.subscription_options else get_back_to_main_menu_markup(
+        current_lang, i18n)
 
-    target_message = message_or_callback.message if isinstance(
-        message_or_callback, types.CallbackQuery) else message_or_callback
-    answered_callback = False
+    target_message_obj = event.message if isinstance(
+        event, types.CallbackQuery) else event
+    if not target_message_obj:
+        if isinstance(event, types.CallbackQuery):
+            await event.answer(get_text("error_occurred_try_again"),
+                               show_alert=True)
+        return
 
-    if isinstance(message_or_callback, types.CallbackQuery):
-
-        await message_or_callback.answer()
-        answered_callback = True
-
-    if target_message:
-        if isinstance(message_or_callback, types.CallbackQuery):
-            try:
-                await target_message.edit_text(text, reply_markup=reply_markup)
-            except Exception:
-                await target_message.answer(text, reply_markup=reply_markup)
-        else:
-            await target_message.answer(text, reply_markup=reply_markup)
-    elif isinstance(message_or_callback, types.Message):
-        await message_or_callback.answer(text, reply_markup=reply_markup)
-
-    if isinstance(message_or_callback,
-                  types.CallbackQuery) and not answered_callback:
-        await message_or_callback.answer()
+    if isinstance(event, types.CallbackQuery):
+        try:
+            await target_message_obj.edit_text(text_content,
+                                               reply_markup=reply_markup)
+        except Exception:
+            await target_message_obj.answer(text_content,
+                                            reply_markup=reply_markup)
+        await event.answer()
+    else:
+        await target_message_obj.answer(text_content,
+                                        reply_markup=reply_markup)
 
 
 @router.callback_query(F.data.startswith("subscribe_period:"))
 async def select_subscription_period_callback_handler(
-        callback: types.CallbackQuery, state: FSMContext, settings: Settings,
-        i18n_data: dict):
-    current_lang = i18n_data.get("current_language",
-                                 getattr(settings, 'DEFAULT_LANGUAGE', 'en'))
+        callback: types.CallbackQuery, settings: Settings, i18n_data: dict,
+        session: AsyncSession):
+    current_lang = i18n_data.get("current_language", settings.DEFAULT_LANGUAGE)
     i18n: Optional[JsonI18n] = i18n_data.get("i18n_instance")
-    if not i18n:
-        logging.error(
-            "i18n missing in select_subscription_period_callback_handler")
-        await callback.answer("Service error. Please try again.",
+    get_text = lambda key, **kwargs: i18n.gettext(current_lang, key, **kwargs
+                                                  ) if i18n else key
+
+    if not i18n or not callback.message:
+        await callback.answer(get_text("error_occurred_try_again"),
                               show_alert=True)
         return
-    get_translation = lambda key, **kwargs: i18n.gettext(
-        current_lang, key, **kwargs)
 
     try:
         months = int(callback.data.split(":")[-1])
-    except ValueError:
-        logging.error(f"Invalid sub period: {callback.data}")
-        await callback.answer(get_translation("error_try_again"),
-                              show_alert=True)
+    except (ValueError, IndexError):
+        logging.error(
+            f"Invalid subscription period in callback_data: {callback.data}")
+        await callback.answer(get_text("error_try_again"), show_alert=True)
         return
 
-    price = settings.subscription_options.get(months)
-    if price is None:
-        logging.error(f"Price not found for {months} months subscription.")
-        await callback.answer(get_translation("error_try_again"),
-                              show_alert=True)
+    price_rub = settings.subscription_options.get(months)
+    if price_rub is None:
+        logging.error(
+            f"Price not found for {months} months subscription period in settings.subscription_options."
+        )
+        await callback.answer(get_text("error_try_again"), show_alert=True)
         return
 
     currency_symbol_val = settings.DEFAULT_CURRENCY_SYMBOL
-    confirmation_text = get_translation("confirm_subscription_prompt",
-                                        months=months,
-                                        price=price,
-                                        currency_symbol=currency_symbol_val)
-    reply_markup = get_confirm_subscription_keyboard(months, price,
+    confirmation_text_content = get_text("confirm_subscription_prompt",
+                                         months=months,
+                                         price=f"{price_rub:.2f}",
+                                         currency_symbol=currency_symbol_val)
+    reply_markup = get_confirm_subscription_keyboard(months, price_rub,
                                                      currency_symbol_val,
                                                      current_lang, i18n)
 
-    if callback.message:
-        try:
-            await callback.message.edit_text(confirmation_text,
-                                             reply_markup=reply_markup)
-        except Exception as e:
-            logging.warning(f"Edit failed: {e}")
-            await callback.message.answer(confirmation_text,
-                                          reply_markup=reply_markup)
+    try:
+        await callback.message.edit_text(confirmation_text_content,
+                                         reply_markup=reply_markup)
+    except Exception as e_edit:
+        logging.warning(
+            f"Edit message for subscription confirmation failed: {e_edit}. Sending new one."
+        )
+        await callback.message.answer(confirmation_text_content,
+                                      reply_markup=reply_markup)
     await callback.answer()
 
 
 @router.callback_query(F.data.startswith("confirm_sub:"))
 async def confirm_subscription_callback_handler(
-        callback: types.CallbackQuery, state: FSMContext, settings: Settings,
-        i18n_data: dict, yookassa_service: YooKassaService):
+        callback: types.CallbackQuery, settings: Settings, i18n_data: dict,
+        yookassa_service: YooKassaService, session: AsyncSession):
+    current_lang = i18n_data.get("current_language", settings.DEFAULT_LANGUAGE)
     i18n: Optional[JsonI18n] = i18n_data.get("i18n_instance")
-    current_lang = i18n_data.get("current_language",
-                                 getattr(settings, 'DEFAULT_LANGUAGE', 'en'))
-    if not i18n:
-        logging.error("i18n missing")
-        await callback.answer("Language error.", show_alert=True)
-        return
-    get_translation = lambda key, **kwargs: i18n.gettext(
-        current_lang, key, **kwargs)
-    if not yookassa_service or not yookassa_service.configured:
-        logging.error("YooKassa service missing or not configured")
-        await callback.message.edit_text(
-            get_translation("payment_service_unavailable")
-        ) if callback.message else None
-        await callback.answer(get_translation("payment_service_unavailable"),
+
+    get_text = lambda key, **kwargs: i18n.gettext(current_lang, key, **kwargs
+                                                  ) if i18n else key
+
+    if not i18n or not callback.message:
+
+        await callback.answer(get_text("error_occurred_try_again"),
                               show_alert=True)
         return
+
+    if not yookassa_service or not yookassa_service.configured:
+        logging.error("YooKassa service is not configured or unavailable.")
+        target_msg_edit = callback.message
+        await target_msg_edit.edit_text(get_text("payment_service_unavailable")
+                                        )
+        await callback.answer(get_text("payment_service_unavailable_alert"),
+                              show_alert=True)
+        return
+
     try:
         _, data_payload = callback.data.split(":", 1)
         months_str, price_str = data_payload.split(":")
         months = int(months_str)
-        price = float(price_str)
-    except ValueError:
-        logging.error(f"Invalid confirm data: {callback.data}")
-        await callback.answer(get_translation("error_try_again"),
-                              show_alert=True)
+        price_rub = float(price_str)
+    except (ValueError, IndexError):
+        logging.error(
+            f"Invalid confirmation data in callback: {callback.data}")
+        await callback.answer(get_text("error_try_again"), show_alert=True)
         return
 
     user_id = callback.from_user.id
-    description = get_translation("payment_description_subscription",
-                                  months=months)
-    currency = settings.DEFAULT_CURRENCY_SYMBOL
-    payment_metadata = {
+
+    payment_description = get_text("payment_description_subscription",
+                                   months=months)
+    currency_code_for_yk = "RUB"
+
+    payment_record_data = {
+        "user_id": user_id,
+        "amount": price_rub,
+        "currency": currency_code_for_yk,
+        "status": "pending_yookassa",
+        "description": payment_description,
+        "subscription_duration_months": months,
+    }
+    db_payment_record = None
+    try:
+        db_payment_record = await payment_dal.create_payment_record(
+            session, payment_record_data)
+        await session.commit()
+        logging.info(
+            f"Payment record {db_payment_record.payment_id} created for user {user_id} with status 'pending_yookassa'."
+        )
+    except Exception as e_db_payment:
+        await session.rollback()
+        logging.error(
+            f"Failed to create payment record in DB for user {user_id}: {e_db_payment}",
+            exc_info=True)
+        await callback.message.edit_text(
+            get_text("error_creating_payment_record"))
+        await callback.answer(get_text("error_try_again"), show_alert=True)
+        return
+
+    if not db_payment_record:
+        await callback.message.edit_text(
+            get_text("error_creating_payment_record"))
+        await callback.answer(get_text("error_try_again"), show_alert=True)
+        return
+
+    yookassa_metadata = {
         "user_id": str(user_id),
         "subscription_months": str(months),
-        "description": description
+        "payment_db_id": str(db_payment_record.payment_id),
     }
-    payment_db_id = await add_payment_record(user_id, None, None, price,
-                                             currency, "pending_creation",
-                                             description, months, None)
-    if not payment_db_id:
-        if callback.message:
-            await callback.message.edit_text(
-                get_translation("error_creating_payment_record"))
-        await callback.answer(show_alert=True)
-        return
-    payment_metadata["payment_db_id"] = str(payment_db_id)
-    payment_response = await yookassa_service.create_payment(
-        price, currency, description, payment_metadata)
+    receipt_email_for_yk = settings.YOOKASSA_DEFAULT_RECEIPT_EMAIL
 
-    if callback.message:
-        if payment_response and payment_response.get("confirmation_url"):
-            async with get_db_connection_manager() as db:
-                await _setup_db_connection(db)
-                await db.execute(
-                    "UPDATE payments SET yookassa_payment_id = ?, idempotence_key = ?, status = ? WHERE payment_id = ?",
-                    (payment_response["id"],
-                     payment_response.get("idempotence_key"),
-                     payment_response["status"], payment_db_id))
-                await db.commit()
+    payment_response_yk = await yookassa_service.create_payment(
+        amount=price_rub,
+        currency=currency_code_for_yk,
+        description=payment_description,
+        metadata=yookassa_metadata,
+        receipt_email=receipt_email_for_yk)
+
+    if payment_response_yk and payment_response_yk.get("confirmation_url"):
+        try:
+            await payment_dal.update_payment_status_by_db_id(
+                session,
+                payment_db_id=db_payment_record.payment_id,
+                new_status=payment_response_yk.get("status", "pending"),
+                yk_payment_id=payment_response_yk.get("id"))
+            await session.commit()
+        except Exception as e_db_update_ykid:
+            await session.rollback()
+            logging.error(
+                f"Failed to update payment record {db_payment_record.payment_id} with YK ID: {e_db_update_ykid}",
+                exc_info=True)
             await callback.message.edit_text(
-                get_translation(key="payment_link_message", months=months),
-                reply_markup=get_payment_url_keyboard(
-                    payment_response["confirmation_url"], current_lang, i18n),
-                disable_web_page_preview=False)
-        else:
-            async with get_db_connection_manager() as db:
-                await _setup_db_connection(db)
-                await db.execute(
-                    "UPDATE payments SET status = ? WHERE payment_id = ?",
-                    ("failed_creation", payment_db_id))
-                await db.commit()
-            await callback.message.edit_text(
-                get_translation("error_payment_gateway"))
+                get_text("error_payment_gateway_link_failed"))
+            await callback.answer(get_text("error_try_again"), show_alert=True)
+            return
+
+        await callback.message.edit_text(
+            get_text(key="payment_link_message", months=months),
+            reply_markup=get_payment_url_keyboard(
+                payment_response_yk["confirmation_url"], current_lang, i18n),
+            disable_web_page_preview=False)
+    else:
+        try:
+            await payment_dal.update_payment_status_by_db_id(
+                session, db_payment_record.payment_id, "failed_creation")
+            await session.commit()
+        except Exception as e_db_fail_create:
+            await session.rollback()
+            logging.error(
+                f"Additionally failed to update payment record to 'failed_creation': {e_db_fail_create}",
+                exc_info=True)
+
+        logging.error(
+            f"Failed to create payment in YooKassa for user {user_id}, payment_db_id {db_payment_record.payment_id}. Response: {payment_response_yk}"
+        )
+        await callback.message.edit_text(get_text("error_payment_gateway"))
+
     await callback.answer()
 
 
 @router.callback_query(F.data == "main_action:subscribe")
 async def reshow_subscription_options_callback(callback: types.CallbackQuery,
                                                i18n_data: dict,
-                                               settings: Settings):
-    await display_subscription_options(callback, i18n_data, settings)
+                                               settings: Settings,
+                                               session: AsyncSession):
+    await display_subscription_options(callback, i18n_data, settings, session)
 
 
 async def my_subscription_command_handler(
-        message_event: types.Message | types.CallbackQuery, i18n_data: dict,
+        event: Union[types.Message, types.CallbackQuery], i18n_data: dict,
         settings: Settings, panel_service: PanelApiService,
-        subscription_service: SubscriptionService):
-    target_message = message_event.message if isinstance(
-        message_event, types.CallbackQuery) else message_event
-    user = message_event.from_user
-    if isinstance(message_event, types.CallbackQuery):
-        await message_event.answer()
+        subscription_service: SubscriptionService, session: AsyncSession,
+        bot: Bot):
+    target_message_obj = event.message if isinstance(
+        event, types.CallbackQuery) else event
+    user = event.from_user
 
-    current_lang = i18n_data.get("current_language",
-                                 getattr(settings, 'DEFAULT_LANGUAGE', 'en'))
+    if isinstance(event, types.CallbackQuery):
+        await event.answer()
+
+    current_lang = i18n_data.get("current_language", settings.DEFAULT_LANGUAGE)
     i18n: Optional[JsonI18n] = i18n_data.get("i18n_instance")
-    if not i18n:
-        logging.error("i18n missing")
-        await target_message.answer("Lang error")
+    get_text = lambda key, **kwargs: i18n.gettext(current_lang, key, **kwargs
+                                                  ) if i18n else key
+
+    if not i18n or not target_message_obj:
+        if isinstance(event, types.Message):
+            await event.answer(get_text("error_occurred_try_again"))
         return
-    get_translation = lambda key, **kwargs: i18n.gettext(
-        current_lang, key, **kwargs)
+
     if not panel_service or not subscription_service:
-        logging.error("Services missing")
-        await target_message.answer(
-            get_translation("error_service_unavailable"))
+        logging.error(
+            "PanelService or SubscriptionService is missing in my_subscription_command_handler."
+        )
+        await target_message_obj.answer(get_text("error_service_unavailable"))
         return
 
-    active_sub = await subscription_service.get_active_subscription(user.id)
-    sub_info_text = ""
-    if active_sub:
-        end_date_obj = active_sub.get('end_date')
-        if isinstance(end_date_obj, str):
-            try:
-                end_date_obj = datetime.fromisoformat(
-                    end_date_obj.replace("Z", "+00:00"))
-            except ValueError:
-                logging.warning(
-                    f"Could not parse date string '{end_date_obj}'.")
-                end_date_obj = datetime.now(timezone.utc)
+    active_sub_details = await subscription_service.get_active_subscription_details(
+        session, user.id)
 
-        if not isinstance(end_date_obj, datetime):
-            end_date_obj = datetime.now(timezone.utc)
-        if end_date_obj.tzinfo is None:
-            end_date_obj = end_date_obj.replace(tzinfo=timezone.utc)
+    sub_info_text_content = ""
+    if active_sub_details:
+        end_date_obj = active_sub_details.get('end_date')
+        days_left = 0
+        if end_date_obj:
+            if end_date_obj.tzinfo is None:
+                end_date_obj = end_date_obj.replace(tzinfo=timezone.utc)
+            days_left = (end_date_obj.date() - datetime.now().date()).days
 
-        today_date_utc = datetime.now(timezone.utc).date()
-        end_date_only = end_date_obj.date()
-        days_left = (end_date_only - today_date_utc).days
+        actual_config_link = active_sub_details.get('config_link') or get_text(
+            "config_link_not_available")
 
-        actual_config_link = get_translation("config_link_not_available")
-        panel_user_uuid = active_sub.get('panel_user_uuid')
-        if panel_user_uuid:
-            panel_user_data = await panel_service.get_user_by_uuid(
-                panel_user_uuid)
-            if panel_user_data:
-                if panel_user_data.get('subscriptionUrl'):
-                    actual_config_link = panel_user_data['subscriptionUrl']
-                elif panel_user_data.get('shortUuid'):
-                    link = await panel_service.get_subscription_link(
-                        panel_user_data['shortUuid'])
-                    if link: actual_config_link = link
+        traffic_limit_bytes = active_sub_details.get('traffic_limit_bytes')
+        traffic_used_bytes = active_sub_details.get('traffic_used_bytes')
 
-        traffic_limit_gb = get_translation("traffic_unlimited")
-        traffic_used_gb = get_translation("traffic_na")
-        if active_sub.get('traffic_limit_bytes'
-                          ) and active_sub['traffic_limit_bytes'] > 0:
-            traffic_limit_gb = f"{active_sub['traffic_limit_bytes'] / (1024**3):.2f} GB"
-        if active_sub.get('traffic_used_bytes') is not None:
-            traffic_used_gb = f"{active_sub['traffic_used_bytes'] / (1024**3):.2f} GB"
+        traffic_limit_gb_str = get_text("traffic_unlimited")
+        if traffic_limit_bytes and traffic_limit_bytes > 0:
+            traffic_limit_gb_str = f"{traffic_limit_bytes / (1024**3):.2f} GB"
 
-        sub_info_text = get_translation(
+        traffic_used_gb_str = get_text("traffic_na")
+        if traffic_used_bytes is not None:
+            traffic_used_gb_str = f"{traffic_used_bytes / (1024**3):.2f} GB"
+
+        sub_info_text_content = get_text(
             "my_subscription_details",
-            end_date=end_date_obj.strftime("%Y-%m-%d"),
+            end_date=end_date_obj.strftime("%Y-%m-%d")
+            if end_date_obj else "N/A",
             days_left=max(0, days_left),
-            status=active_sub.get(
-                'status_from_panel',
-                get_translation('status_active')).capitalize(),
+            status=active_sub_details.get(
+                'status_from_panel', get_text('status_active')).capitalize(),
             config_link=actual_config_link,
-            traffic_limit=traffic_limit_gb,
-            traffic_used=traffic_used_gb)
+            traffic_limit=traffic_limit_gb_str,
+            traffic_used=traffic_used_gb_str)
     else:
-        sub_info_text = get_translation("subscription_not_active")
+        sub_info_text_content = get_text("subscription_not_active")
+        logging.info(
+            f"User {user.id} no active sub details for 'my_subscription'.")
 
     reply_markup_val = get_back_to_main_menu_markup(current_lang, i18n)
-    if isinstance(message_event,
-                  types.CallbackQuery) and message_event.message:
+
+    if isinstance(event, types.CallbackQuery) and event.message:
         try:
-            await message_event.message.edit_text(
-                sub_info_text,
-                reply_markup=reply_markup_val,
-                parse_mode="HTML",
-                disable_web_page_preview=True)
-        except Exception as e:
-            logging.warning(f"Edit 'my_sub' failed: {e}")
-            await target_message.answer(sub_info_text,
+            await event.message.edit_text(sub_info_text_content,
+                                          reply_markup=reply_markup_val,
+                                          parse_mode="HTML",
+                                          disable_web_page_preview=True)
+        except Exception as e_edit:
+            logging.warning(
+                f"Edit 'my_subscription' failed: {e_edit}. Sending new message to chat {target_message_obj.chat.id}."
+            )
+            await bot.send_message(chat_id=target_message_obj.chat.id,
+                                   text=sub_info_text_content,
+                                   reply_markup=reply_markup_val,
+                                   parse_mode="HTML",
+                                   disable_web_page_preview=True)
+    else:
+        await target_message_obj.answer(sub_info_text_content,
                                         reply_markup=reply_markup_val,
                                         parse_mode="HTML",
                                         disable_web_page_preview=True)
-    else:
-        await target_message.answer(sub_info_text,
-                                    reply_markup=reply_markup_val,
-                                    parse_mode="HTML",
-                                    disable_web_page_preview=True)
 
 
 @router.message(Command("connect"))
 async def connect_command_handler(message: types.Message, i18n_data: dict,
                                   settings: Settings,
                                   panel_service: PanelApiService,
-                                  subscription_service: SubscriptionService):
-    """Handles the /connect command, showing subscription info."""
+                                  subscription_service: SubscriptionService,
+                                  session: AsyncSession, bot: Bot):
     logging.info(f"User {message.from_user.id} used /connect command.")
     await my_subscription_command_handler(message, i18n_data, settings,
-                                          panel_service, subscription_service)
+                                          panel_service, subscription_service,
+                                          session, bot)

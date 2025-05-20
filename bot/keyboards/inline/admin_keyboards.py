@@ -4,6 +4,8 @@ from typing import Optional, List, Any
 import math
 
 from config.settings import Settings
+from bot.middlewares.i18n import JsonI18n
+from db.models import User
 
 
 def get_admin_panel_keyboard(i18n_instance, lang: str,
@@ -79,41 +81,62 @@ def get_logs_pagination_keyboard(
     return builder.as_markup()
 
 
-def get_banned_users_keyboard(users: List[Any], current_page: int,
-                              total_users_banned: int, i18n_instance,
+def get_banned_users_keyboard(banned_users: List[User], current_page: int,
+                              total_banned: int, i18n_instance: JsonI18n,
                               lang: str,
                               settings: Settings) -> InlineKeyboardMarkup:
     _ = lambda key, **kwargs: i18n_instance.gettext(lang, key, **kwargs)
     builder = InlineKeyboardBuilder()
     page_size = settings.LOGS_PAGE_SIZE
-    total_pages = math.ceil(total_users_banned /
-                            page_size) if page_size > 0 else 1
-    if total_users_banned == 0: total_pages = 1
-    for user_row in users:
-        user_display = user_row['first_name'] or f"ID: {user_row['user_id']}"
-        if user_row['username']: user_display += f" (@{user_row['username']})"
-        else:
-            user_display = f"ID: {user_row['user_id']}" if not user_row[
-                'first_name'] else user_display
-        builder.button(text=user_display,
-                       callback_data=
-                       f"admin_user_card:{user_row['user_id']}:{current_page}")
-    pagination_row = []
-    if current_page > 0:
-        pagination_row.append(
+
+    if not banned_users and total_banned == 0:
+        pass
+
+    for user_row in banned_users:
+
+        user_display_parts = []
+        if user_row.first_name:
+            user_display_parts.append(user_row.first_name)
+        if user_row.username:
+            user_display_parts.append(f"(@{user_row.username})")
+        if not user_display_parts:
+            user_display_parts.append(f"ID: {user_row.user_id}")
+
+        user_display = " ".join(user_display_parts).strip()
+
+        button_text = _("admin_banned_user_button_text",
+                        user_display=user_display,
+                        user_id=user_row.user_id)
+        builder.row(
             InlineKeyboardButton(
-                text="⬅️ " + _("prev_page_button", default="Prev"),
-                callback_data=f"admin_action:view_banned:{current_page - 1}"))
-    if (current_page + 1) * page_size < total_users_banned:
-        pagination_row.append(
-            InlineKeyboardButton(
-                text=_("next_page_button", default="Next") + " ➡️",
-                callback_data=f"admin_action:view_banned:{current_page + 1}"))
-    if pagination_row: builder.row(*pagination_row)
+                text=button_text,
+                callback_data=
+                f"admin_user_card:{user_row.user_id}:{current_page}"))
+
+    if total_banned > page_size:
+        total_pages = math.ceil(total_banned / page_size)
+        pagination_buttons = []
+        if current_page > 0:
+            pagination_buttons.append(
+                InlineKeyboardButton(
+                    text=_("prev_page_button"),
+                    callback_data=f"admin_action:view_banned:{current_page - 1}"
+                ))
+        pagination_buttons.append(
+            InlineKeyboardButton(text=f"{current_page + 1}/{total_pages}",
+                                 callback_data="stub_page_display"))
+        if current_page < total_pages - 1:
+            pagination_buttons.append(
+                InlineKeyboardButton(
+                    text=_("next_page_button"),
+                    callback_data=f"admin_action:view_banned:{current_page + 1}"
+                ))
+        if pagination_buttons:
+            builder.row(*pagination_buttons)
+
     builder.row(
-        InlineKeyboardButton(text=_(key="back_to_admin_panel_button"),
+        InlineKeyboardButton(text=_("back_to_admin_panel_button"),
                              callback_data="admin_action:main"))
-    builder.adjust(1)
     return builder.as_markup()
 
 
