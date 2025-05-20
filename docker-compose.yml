@@ -1,17 +1,32 @@
 services:
-  vpn-shop:
-    build: .
-    container_name: vpn-shop-stable
-    hostname: vpn-shop-stable
+  remnawave-tg-shop:
+    image: ghcr.io/machka-pasla/remnawave-tg-shop:latest
+#    build: .
+    container_name: remnawave-tg-shop
+    hostname: remnawave-tg-shop
     env_file:
       - .env
     networks:
       - remnawave-network
     volumes:
-      - ./bot_database.sqlite3:/app/bot_database.sqlite3
       - ./locales:/app/locales
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:17
+    container_name: remnawave-tg-shop-db
+    env_file:
+      - .env
+    volumes:
+      - remnawave-tg-shop-db-data:/var/lib/postgresql/data
+    networks:
+      - remnawave-network
     restart: unless-stopped
 
 networks:
   remnawave-network:
     external: true
+
+volumes:
+  remnawave-tg-shop-db-data:
+    name: remnawave-tg-shop-db-data
