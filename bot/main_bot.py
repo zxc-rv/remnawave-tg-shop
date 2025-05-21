@@ -105,14 +105,7 @@ async def on_startup_configured(dispatcher: Dispatcher):
     telegram_webhook_url_to_set = getattr(settings,
                                           'TELEGRAM_WEBHOOK_BASE_URL', None)
     if telegram_webhook_url_to_set:
-        if settings.BOT_TOKEN in telegram_webhook_url_to_set:
-            logging.error(
-                f"CRITICAL SECURITY RISK: Bot token detected in TELEGRAM_WEBHOOK_BASE_URL ('{telegram_webhook_url_to_set}'). "
-                "This is a major security vulnerability. Webhook will NOT be set."
-            )
-            full_telegram_webhook_url = "ERROR_URL_TOKEN_DETECTED"
-        else:
-            full_telegram_webhook_url = f"{str(telegram_webhook_url_to_set).rstrip('/')}/{settings.BOT_TOKEN}"
+        full_telegram_webhook_url = f"{str(telegram_webhook_url_to_set).rstrip('/')}/{settings.BOT_TOKEN}"
 
         logging.info(
             f"STARTUP: Attempting to set Telegram webhook to: {full_telegram_webhook_url if full_telegram_webhook_url != 'ERROR_URL_TOKEN_DETECTED' else 'HIDDEN DUE TO TOKEN'}"

@@ -12,9 +12,10 @@ services:
       - ./locales:/app/locales
     restart: unless-stopped
 
-  postgres:
+  remnawave-tg-shop-db:
     image: postgres:17
     container_name: remnawave-tg-shop-db
+    hostname: remnawave-tg-shop-db
     env_file:
       - .env
     volumes:
