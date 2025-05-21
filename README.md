@@ -47,7 +47,7 @@ This Telegram bot is designed to automate the sale and management of subscriptio
 * **Python 3.11**
 * **Aiogram 3.x:** Asynchronous Telegram Bot Framework
 * **aiohttp:** For running the webhook server
-* **aiosqlite:** Asynchronous SQLite database interaction
+* **sqlalchemy:** Asynchronous PostgreSQL database interaction
 * **YooKassa SDK:** For payment processing
 * **APScheduler:** For scheduled tasks (e.g., notifications)
 * **Pydantic:** For settings management (loading from `.env`)
@@ -103,26 +103,26 @@ This Telegram bot is designed to automate the sale and management of subscriptio
     * `LOGS_PAGE_SIZE`: For admin panel log pagination.
 
 3.  **Locales:**
-    * Translation files are in the `locales/` directory (`en.json`, `ru.json`). Ensure they are present and correctly formatted. The `bot_database.sqlite3` and `locales` directory will be mounted as volumes in Docker. `locales` mounting is optional.
+    * Translation files are in the `locales/` directory (`en.json`, `ru.json`). Ensure they are present and correctly formatted. `locales` mounting is optional.
 
 4.  **Build and Run with Docker Compose:**
     ```bash
-    docker compose up --build -d
+    docker compose up -d
     ```
-    This command will build the Docker image (if it doesn't exist or if `Dockerfile` changed) and start the `vpn-shop` service in detached mode.
+    This command will build the Docker image (if it doesn't exist or if `Dockerfile` changed) and start the `remnawave-tg-shop` service in detached mode.
 
 5.  **Webhook Setup (Important if using webhooks):**
     * **Reverse Proxy (Nginx, Caddy, etc.):** You need a reverse proxy to handle incoming HTTPS traffic, manage SSL certificates (e.g., from Let's Encrypt), and forward requests to your bot's container.
-        * Forward requests for `https://{YOOKASSA_WEBHOOK_BASE_URL_domain}/webhook/yookassa` to `http://vpn-shop:{WEB_SERVER_PORT}/webhook/yookassa` (where `vpn-shop` is the service name in `docker-compose.yml`).
-        * If using Telegram webhooks, forward requests for `https://{TELEGRAM_WEBHOOK_BASE_URL_domain}/<YOUR_BOT_TOKEN>` to `http://vpn-shop:{WEB_SERVER_PORT}/<YOUR_BOT_TOKEN>`.
+        * Forward requests for `https://{YOOKASSA_WEBHOOK_BASE_URL_domain}/webhook/yookassa` to `http://remnawave-tg-shop:{WEB_SERVER_PORT}/webhook/yookassa` (where `remnawave-tg-shop` is the service name in `docker-compose.yml`).
+        * If using Telegram webhooks, forward requests for `https://{TELEGRAM_WEBHOOK_BASE_URL_domain}/<YOUR_BOT_TOKEN>` to `http://remnawave-tg-shop:{WEB_SERVER_PORT}/<YOUR_BOT_TOKEN>`.
     * **Telegram Webhook Registration:** The bot attempts to set its Telegram webhook URL on startup if `TELEGRAM_WEBHOOK_BASE_URL` is configured in `.env`. Check the bot logs to confirm if this was successful. You can also manually check using the Telegram Bot API method `getWebhookInfo`.
 
 6.  **Database:**
-    * A SQLite database file (`bot_database.sqlite3`) will be created in your project root (or wherever you map the volume). The schema is initialized automatically on the first run if the file doesn't exist.
+    * A PostgreSQL database will be created in the docker container. The schema is initialized automatically on the first run if the database doesn't exist.
 
 7.  **Viewing Logs:**
     ```bash
-    docker compose logs -f vpn-shop
+    docker compose logs -f remnawave-tg-shop
     ```
 
 ## 🐳 Docker Setup
@@ -154,31 +154,39 @@ CMD ["python", "main.py"]
 ```
 
 ### `docker-compose.yml`
-
-YAML
-
 ```
 services:
-  vpn-shop:
-    build: .
-    container_name: vpn-shop
-    hostname: vpn-shop
-    networks:
-      - remnawave-network # Ensure this external network exists or define it
-    volumes:
-      - ./bot_database.sqlite3:/app/bot_database.sqlite3
-    #   - ./locales:/app/locales
+  remnawave-tg-shop:
+    image: ghcr.io/machka-pasla/remnawave-tg-shop:latest
+#    build: .
+    container_name: remnawave-tg-shop
+    hostname: remnawave-tg-shop
+    env_file:
+      - .env
+#    networks:
+#      - remnawave-network
+#    volumes:
+#      - ./locales:/app/locales
     restart: unless-stopped
-    # Optionally, expose ports if you are not using a shared Docker network
-    # and want to access the bot's webserver directly (not recommended for production without a reverse proxy)
-    # ports:
-    #   - "8080:8080" 
 
-networks:
-  remnawave-network:
-    external: true # Assumes 'remnawave-network' is an existing external Docker network
-                   # If not, you might want to define it here or use a default bridge.
+  postgres:
+    image: postgres:17
+    container_name: remnawave-tg-shop-db
+    env_file:
+      - .env
+    volumes:
+      - remnawave-tg-shop-db-data:/var/lib/postgresql/data
+#    networks:
+#      - remnawave-network
+    restart: unless-stopped
 
+# networks:
+#   remnawave-network:
+#     external: true
+
+volumes:
+  remnawave-tg-shop-db-data:
+    name: remnawave-tg-shop-db-data
 ```
 
 **Note on `remnawave-network`:** The `docker-compose.yml` assumes an external network named `remnawave-network`. If this network doesn't exist or you want the bot on a different network (e.g., a default bridge or a new one defined in this compose file), you'll need to adjust the `networks` section. If the Remnawave panel is also running in Docker on the same host, putting them on the same user-defined network allows them to communicate using service names.
@@ -196,17 +204,21 @@ networks:
 │   ├── states/           # FSM states
 │   └── main_bot.py       # Core bot logic, dispatcher setup, startup/shutdown
 ├── config/
-│   └── settings.py       # Pydantic settings model
+│   └── settings.py       # Pydantic settings and config parser
 ├── db/
-│   └── database.py       # Database schema, connection, and CRUD functions
-├── locales/              # Localization files (en.json, ru.json)
-├── .env.example          # Example environment variables
-├── .env                  # Your local environment variables (ignored by git)
-├── Dockerfile            # Instructions to build the Docker image
-├── docker-compose.yml    # Docker Compose configuration
-├── requirements.txt      # Python dependencies
-└── main.py               # Main entry point to run the bot
-
+│   ├── dal/              # Data Access Layer (queries, transactions)
+│   ├── database_setup.py # DB connection/init setup
+│   └── models.py         # ORM models (e.g., SQLAlchemy)
+├── locales/              # Localization files
+│   ├── en.json           # English locale
+│   └── ru.json           # Russian locale
+├── .env.example          # Example environment variables for local setup
+├── .env                  # Actual environment variables (ignored by Git)
+├── Dockerfile            # Docker image build instructions
+├── docker-compose.yml    # Docker Compose orchestration config
+├── requirements.txt      # List of Python dependencies
+├── README.md             # Project documentation
+└── main.py               # Entry point to launch the bot
 ```
 
 ## 🤝 Contributing
