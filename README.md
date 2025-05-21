@@ -105,11 +105,11 @@ This Telegram bot is designed to automate the sale and management of subscriptio
 3.  **Locales:**
     * Translation files are in the `locales/` directory (`en.json`, `ru.json`). Ensure they are present and correctly formatted. `locales` mounting is optional.
 
-4.  **Build and Run with Docker Compose:**
+4.  **Run with Docker Compose:**
     ```bash
     docker compose up -d
     ```
-    This command will build the Docker image (if it doesn't exist or if `Dockerfile` changed) and start the `remnawave-tg-shop` service in detached mode.
+    This command will pull the Docker image (if it doesn't exist or if `Dockerfile` changed) and start the `remnawave-tg-shop` service in detached mode.
 
 5.  **Webhook Setup (Important if using webhooks):**
     * **Reverse Proxy (Nginx, Caddy, etc.):** You need a reverse proxy to handle incoming HTTPS traffic, manage SSL certificates (e.g., from Let's Encrypt), and forward requests to your bot's container.
