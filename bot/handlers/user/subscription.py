@@ -1,6 +1,7 @@
 import logging
 from aiogram import Router, F, types, Bot
 from aiogram.filters import Command
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from typing import Optional, Dict, Any, Union
 from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -257,97 +258,88 @@ async def reshow_subscription_options_callback(callback: types.CallbackQuery,
 
 
 async def my_subscription_command_handler(
-        event: Union[types.Message, types.CallbackQuery], i18n_data: dict,
-        settings: Settings, panel_service: PanelApiService,
-        subscription_service: SubscriptionService, session: AsyncSession,
-        bot: Bot):
-    target_message_obj = event.message if isinstance(
-        event, types.CallbackQuery) else event
-    user = event.from_user
-
-    if isinstance(event, types.CallbackQuery):
-        await event.answer()
-
+    event: Union[types.Message, types.CallbackQuery],
+    i18n_data: dict,
+    settings: Settings,
+    panel_service: PanelApiService,
+    subscription_service: SubscriptionService,
+    session: AsyncSession,
+    bot: Bot
+):
+    target = event.message if isinstance(event, types.CallbackQuery) else event
     current_lang = i18n_data.get("current_language", settings.DEFAULT_LANGUAGE)
-    i18n: Optional[JsonI18n] = i18n_data.get("i18n_instance")
-    get_text = lambda key, **kwargs: i18n.gettext(current_lang, key, **kwargs
-                                                  ) if i18n else key
+    i18n: JsonI18n = i18n_data.get("i18n_instance")
+    get_text = lambda key, **kw: i18n.gettext(current_lang, key, **kw)
 
-    if not i18n or not target_message_obj:
+    if not i18n or not target:
         if isinstance(event, types.Message):
             await event.answer(get_text("error_occurred_try_again"))
         return
 
     if not panel_service or not subscription_service:
-        logging.error(
-            "PanelService or SubscriptionService is missing in my_subscription_command_handler."
-        )
-        await target_message_obj.answer(get_text("error_service_unavailable"))
+        await target.answer(get_text("error_service_unavailable"))
         return
 
-    active_sub_details = await subscription_service.get_active_subscription_details(
-        session, user.id)
+    active = await subscription_service.get_active_subscription_details(session, event.from_user.id)
 
-    sub_info_text_content = ""
-    if active_sub_details:
-        end_date_obj = active_sub_details.get('end_date')
-        days_left = 0
-        if end_date_obj:
-            if end_date_obj.tzinfo is None:
-                end_date_obj = end_date_obj.replace(tzinfo=timezone.utc)
-            days_left = (end_date_obj.date() - datetime.now().date()).days
+    if not active:
+        text = get_text("subscription_not_active")
 
-        actual_config_link = active_sub_details.get('config_link') or get_text(
-            "config_link_not_available")
+        buy_button = InlineKeyboardButton(
+            text=get_text("menu_subscribe_inline", default="Купить"),
+            callback_data="main_action:subscribe"
+        )
+        back_markup = get_back_to_main_menu_markup(current_lang, i18n)
 
-        traffic_limit_bytes = active_sub_details.get('traffic_limit_bytes')
-        traffic_used_bytes = active_sub_details.get('traffic_used_bytes')
+        kb = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [buy_button],
+                *back_markup.inline_keyboard
+            ]
+        )
 
-        traffic_limit_gb_str = get_text("traffic_unlimited")
-        if traffic_limit_bytes and traffic_limit_bytes > 0:
-            traffic_limit_gb_str = f"{traffic_limit_bytes / (1024**3):.2f} GB"
+        if isinstance(event, types.CallbackQuery):
+            await event.answer()
+            try:
+                await event.message.edit_text(text, reply_markup=kb)
+            except:
+                await event.message.answer(text, reply_markup=kb)
+        else:
+            await event.answer(text, reply_markup=kb)
+        return
 
-        traffic_used_gb_str = get_text("traffic_na")
-        if traffic_used_bytes is not None:
-            traffic_used_gb_str = f"{traffic_used_bytes / (1024**3):.2f} GB"
+    end_date = active.get("end_date")
+    days_left = (
+        (end_date.date() - datetime.now().date()).days
+        if end_date else 0
+    )
+    text = get_text(
+        "my_subscription_details",
+        end_date=end_date.strftime("%Y-%m-%d") if end_date else "N/A",
+        days_left=max(0, days_left),
+        status=active.get("status_from_panel", get_text("status_active")).capitalize(),
+        config_link=active.get("config_link") or get_text("config_link_not_available"),
+        traffic_limit=(
+            f"{active['traffic_limit_bytes'] / 2**30:.2f} GB"
+            if active.get("traffic_limit_bytes")
+            else get_text("traffic_unlimited")
+        ),
+        traffic_used=(
+            f"{active['traffic_used_bytes'] / 2**30:.2f} GB"
+            if active.get("traffic_used_bytes") is not None
+            else get_text("traffic_na")
+        )
+    )
+    markup = get_back_to_main_menu_markup(current_lang, i18n)
 
-        sub_info_text_content = get_text(
-            "my_subscription_details",
-            end_date=end_date_obj.strftime("%Y-%m-%d")
-            if end_date_obj else "N/A",
-            days_left=max(0, days_left),
-            status=active_sub_details.get(
-                'status_from_panel', get_text('status_active')).capitalize(),
-            config_link=actual_config_link,
-            traffic_limit=traffic_limit_gb_str,
-            traffic_used=traffic_used_gb_str)
-    else:
-        sub_info_text_content = get_text("subscription_not_active")
-        logging.info(
-            f"User {user.id} no active sub details for 'my_subscription'.")
-
-    reply_markup_val = get_back_to_main_menu_markup(current_lang, i18n)
-
-    if isinstance(event, types.CallbackQuery) and event.message:
+    if isinstance(event, types.CallbackQuery):
+        await event.answer()
         try:
-            await event.message.edit_text(sub_info_text_content,
-                                          reply_markup=reply_markup_val,
-                                          parse_mode="HTML",
-                                          disable_web_page_preview=True)
-        except Exception as e_edit:
-            logging.warning(
-                f"Edit 'my_subscription' failed: {e_edit}. Sending new message to chat {target_message_obj.chat.id}."
-            )
-            await bot.send_message(chat_id=target_message_obj.chat.id,
-                                   text=sub_info_text_content,
-                                   reply_markup=reply_markup_val,
-                                   parse_mode="HTML",
-                                   disable_web_page_preview=True)
+            await event.message.edit_text(text, reply_markup=markup, parse_mode="HTML", disable_web_page_preview=True)
+        except:
+            await bot.send_message(chat_id=target.chat.id, text=text, reply_markup=markup, parse_mode="HTML", disable_web_page_preview=True)
     else:
-        await target_message_obj.answer(sub_info_text_content,
-                                        reply_markup=reply_markup_val,
-                                        parse_mode="HTML",
-                                        disable_web_page_preview=True)
+        await target.answer(text, reply_markup=markup, parse_mode="HTML", disable_web_page_preview=True)
 
 
 @router.message(Command("connect"))
