@@ -166,7 +166,7 @@
   "user_card_sub_na": "n/a",
   "user_card_ban_button": "🚫 Ban",
   "user_card_unban_button": "✅ Unban",
-  "user_card_back_to_banned_list": "⬅️ Back to Ban List",
+  "user_card_back_to_banned_list_button": "⬅️ Back to Ban List",
   "admin_confirm_action_title": "Confirm: {action_text}",
   "ban_verb_l": "ban",
   "unban_verb_l": "unban",

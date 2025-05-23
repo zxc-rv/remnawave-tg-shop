@@ -166,7 +166,7 @@
   "user_card_sub_na": "н/д",
   "user_card_ban_button": "🚫 Заблокировать",
   "user_card_unban_button": "✅ Разблокировать",
-  "user_card_back_to_banned_list": "⬅️ К списку забаненных",
+  "user_card_back_to_banned_list_button": "⬅️ К списку забаненных",
   "admin_confirm_action_title": "Подтверждение: {action_text}",
   "ban_verb_l": "блокировка",
   "unban_verb_l": "разблокировка",
