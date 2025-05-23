@@ -159,5 +159,5 @@ def get_user_banned_keyboard(support_link: Optional[str], lang: str,
         return None
     _ = lambda key, **kwargs: i18n_instance.gettext(lang, key, **kwargs)
     builder = InlineKeyboardBuilder()
-    builder.button(text=_(key="contact_support_button"), url=support_link)
+    builder.button(text=_(key="menu_support_button"), url=support_link)
     return builder.as_markup()
