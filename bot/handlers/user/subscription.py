@@ -7,11 +7,12 @@ from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config.settings import Settings
-from db.dal import payment_dal, user_dal
+from db.dal import payment_dal
 from bot.keyboards.inline.user_keyboards import (
     get_subscription_options_keyboard, get_payment_method_keyboard,
     get_payment_url_keyboard, get_back_to_main_menu_markup)
-from bot.services.payment_service import YooKassaService
+from bot.services.yookassa_service import YooKassaService
+from bot.services.stars_service import StarsService
 from bot.services.subscription_service import SubscriptionService
 from bot.services.panel_api_service import PanelApiService
 from bot.services.referral_service import ReferralService
@@ -111,6 +112,7 @@ async def select_subscription_period_callback_handler(
         currency_symbol_val,
         current_lang,
         i18n,
+        settings,
     )
 
     try:
@@ -128,7 +130,7 @@ async def select_subscription_period_callback_handler(
 @router.callback_query(F.data.startswith("pay_stars:"))
 async def pay_stars_callback_handler(
         callback: types.CallbackQuery, settings: Settings, i18n_data: dict,
-        session: AsyncSession, bot: Bot):
+        session: AsyncSession, bot: Bot, stars_service: StarsService):
     current_lang = i18n_data.get("current_language", settings.DEFAULT_LANGUAGE)
     i18n: Optional[JsonI18n] = i18n_data.get("i18n_instance")
 
@@ -151,41 +153,9 @@ async def pay_stars_callback_handler(
     user_id = callback.from_user.id
     payment_description = get_text("payment_description_subscription", months=months)
 
-    payment_record_data = {
-        "user_id": user_id,
-        "amount": float(stars_price),
-        "currency": "XTR",
-        "status": "pending_stars",
-        "description": payment_description,
-        "subscription_duration_months": months,
-        "provider": "telegram_stars",
-    }
-
-    try:
-        db_payment_record = await payment_dal.create_payment_record(session, payment_record_data)
-        await session.commit()
-    except Exception as e_db_payment:
-        await session.rollback()
-        logging.error(f"Failed to create stars payment record: {e_db_payment}", exc_info=True)
-        await callback.message.edit_text(get_text("error_creating_payment_record"))
-        await callback.answer(get_text("error_try_again"), show_alert=True)
-        return
-
-    payload = f"{db_payment_record.payment_id}:{months}"
-    prices = [LabeledPrice(label=payment_description, amount=stars_price)]
-
-    try:
-        await bot.send_invoice(
-            chat_id=user_id,
-            title=payment_description,
-            description=payment_description,
-            payload=payload,
-            provider_token="",
-            currency="XTR",
-            prices=prices,
-        )
-    except Exception as e_inv:
-        logging.error(f"Failed to send Telegram Stars invoice: {e_inv}", exc_info=True)
+    payment_id = await stars_service.create_invoice(
+        session, user_id, months, stars_price, payment_description)
+    if payment_id is None:
         await callback.message.edit_text(get_text("error_payment_gateway"))
         await callback.answer(get_text("error_try_again"), show_alert=True)
         return
@@ -424,8 +394,7 @@ async def stars_pre_checkout_handler(pre_checkout_query: types.PreCheckoutQuery)
 @router.message(F.successful_payment)
 async def stars_successful_payment_handler(
         message: types.Message, settings: Settings, i18n_data: dict,
-        session: AsyncSession, bot: Bot, panel_service: PanelApiService,
-        subscription_service: SubscriptionService, referral_service: ReferralService):
+        session: AsyncSession, stars_service: StarsService):
     sp = message.successful_payment
     if not sp or sp.currency != "XTR":
         return
@@ -439,67 +408,9 @@ async def stars_successful_payment_handler(
         logging.error(f"Invalid invoice payload for stars payment: {payload}")
         return
 
-    provider_payment_id = sp.provider_payment_charge_id
     stars_amount = sp.total_amount
-    try:
-        await payment_dal.update_provider_payment_and_status(
-            session, payment_db_id, provider_payment_id, "succeeded")
-        await session.commit()
-    except Exception as e_upd:
-        await session.rollback()
-        logging.error(f"Failed to update stars payment record {payment_db_id}: {e_upd}", exc_info=True)
-        return
-
-    activation_details = await subscription_service.activate_subscription(
-        session,
-        message.from_user.id,
-        months,
-        float(stars_amount),
-        payment_db_id,
-        provider="telegram_stars",
-    )
-
-    if not activation_details or not activation_details.get("end_date"):
-        logging.error(f"Failed to activate subscription after stars payment for user {message.from_user.id}")
-        return
-
-    referral_bonus_info = await referral_service.apply_referral_bonuses_for_payment(
-        session, message.from_user.id, months)
-    await session.commit()
-
-    applied_referee_days = referral_bonus_info.get("referee_bonus_applied_days") if referral_bonus_info else None
-    final_end = (referral_bonus_info.get("referee_new_end_date")
-                 if referral_bonus_info else None)
-    if not final_end:
-        final_end = activation_details["end_date"]
-
-    current_lang = i18n_data.get("current_language", settings.DEFAULT_LANGUAGE)
-    i18n: JsonI18n = i18n_data.get("i18n_instance")
-    _ = lambda k, **kw: i18n.gettext(current_lang, k, **kw) if i18n else k
-
-    if applied_referee_days:
-        inviter_name_display = _("friend_placeholder")
-        db_user = await user_dal.get_user_by_id(session, message.from_user.id)
-        if db_user and db_user.referred_by_id:
-            inviter = await user_dal.get_user_by_id(session, db_user.referred_by_id)
-            if inviter and inviter.first_name:
-                inviter_name_display = inviter.first_name
-            elif inviter and inviter.username:
-                inviter_name_display = f"@{inviter.username}"
-        success_msg = _("payment_successful_with_referral_bonus",
-                        months=months,
-                        base_end_date=activation_details["end_date"].strftime('%Y-%m-%d'),
-                        bonus_days=applied_referee_days,
-                        final_end_date=final_end.strftime('%Y-%m-%d'),
-                        inviter_name=inviter_name_display)
-    else:
-        success_msg = _("payment_successful", months=months,
-                        end_date=final_end.strftime('%Y-%m-%d'))
-
-    try:
-        await bot.send_message(message.from_user.id, success_msg)
-    except Exception as e_send:
-        logging.error(f"Failed to send stars payment success message: {e_send}")
+    await stars_service.process_successful_payment(
+        session, message, payment_db_id, months, stars_amount, i18n_data)
 
 
 @router.message(Command("connect"))

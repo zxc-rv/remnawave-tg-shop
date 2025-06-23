@@ -36,10 +36,19 @@ class Settings(BaseSettings):
 
     TELEGRAM_WEBHOOK_BASE_URL: Optional[str] = None
 
-    PRICE_1_MONTH: Optional[int] = Field(default=None)
-    PRICE_3_MONTHS: Optional[int] = Field(default=None)
-    PRICE_6_MONTHS: Optional[int] = Field(default=None)
-    PRICE_12_MONTHS: Optional[int] = Field(default=None)
+    YOOKASSA_ENABLED: bool = Field(default=True)
+    STARS_ENABLED: bool = Field(default=True)
+    TRIBUTE_ENABLED: bool = Field(default=True)
+
+    MONTH_1_ENABLED: bool = Field(default=True, alias="1_MONTH_ENABLED")
+    MONTH_3_ENABLED: bool = Field(default=True, alias="3_MONTHS_ENABLED")
+    MONTH_6_ENABLED: bool = Field(default=True, alias="6_MONTHS_ENABLED")
+    MONTH_12_ENABLED: bool = Field(default=True, alias="12_MONTHS_ENABLED")
+
+    RUB_PRICE_1_MONTH: Optional[int] = Field(default=None)
+    RUB_PRICE_3_MONTHS: Optional[int] = Field(default=None)
+    RUB_PRICE_6_MONTHS: Optional[int] = Field(default=None)
+    RUB_PRICE_12_MONTHS: Optional[int] = Field(default=None)
 
     STARS_PRICE_1_MONTH: Optional[int] = Field(default=None)
     STARS_PRICE_3_MONTHS: Optional[int] = Field(default=None)
@@ -170,27 +179,27 @@ class Settings(BaseSettings):
     def subscription_options(self) -> Dict[int, float]:
         options: Dict[int, float] = {}
 
-        if self.PRICE_1_MONTH is not None:
-            options[1] = float(self.PRICE_1_MONTH)
-        if self.PRICE_3_MONTHS is not None:
-            options[3] = float(self.PRICE_3_MONTHS)
-        if self.PRICE_6_MONTHS is not None:
-            options[6] = float(self.PRICE_6_MONTHS)
-        if self.PRICE_12_MONTHS is not None:
-            options[12] = float(self.PRICE_12_MONTHS)
+        if self.MONTH_1_ENABLED and self.RUB_PRICE_1_MONTH is not None:
+            options[1] = float(self.RUB_PRICE_1_MONTH)
+        if self.MONTH_3_ENABLED and self.RUB_PRICE_3_MONTHS is not None:
+            options[3] = float(self.RUB_PRICE_3_MONTHS)
+        if self.MONTH_6_ENABLED and self.RUB_PRICE_6_MONTHS is not None:
+            options[6] = float(self.RUB_PRICE_6_MONTHS)
+        if self.MONTH_12_ENABLED and self.RUB_PRICE_12_MONTHS is not None:
+            options[12] = float(self.RUB_PRICE_12_MONTHS)
         return options
 
     @computed_field
     @property
     def stars_subscription_options(self) -> Dict[int, int]:
         options: Dict[int, int] = {}
-        if self.STARS_PRICE_1_MONTH is not None:
+        if self.STARS_ENABLED and self.MONTH_1_ENABLED and self.STARS_PRICE_1_MONTH is not None:
             options[1] = self.STARS_PRICE_1_MONTH
-        if self.STARS_PRICE_3_MONTHS is not None:
+        if self.STARS_ENABLED and self.MONTH_3_ENABLED and self.STARS_PRICE_3_MONTHS is not None:
             options[3] = self.STARS_PRICE_3_MONTHS
-        if self.STARS_PRICE_6_MONTHS is not None:
+        if self.STARS_ENABLED and self.MONTH_6_ENABLED and self.STARS_PRICE_6_MONTHS is not None:
             options[6] = self.STARS_PRICE_6_MONTHS
-        if self.STARS_PRICE_12_MONTHS is not None:
+        if self.STARS_ENABLED and self.MONTH_12_ENABLED and self.STARS_PRICE_12_MONTHS is not None:
             options[12] = self.STARS_PRICE_12_MONTHS
         return options
 
@@ -198,13 +207,13 @@ class Settings(BaseSettings):
     @property
     def tribute_payment_links(self) -> Dict[int, str]:
         links: Dict[int, str] = {}
-        if self.TRIBUTE_LINK_1_MONTH:
+        if self.TRIBUTE_ENABLED and self.MONTH_1_ENABLED and self.TRIBUTE_LINK_1_MONTH:
             links[1] = self.TRIBUTE_LINK_1_MONTH
-        if self.TRIBUTE_LINK_3_MONTHS:
+        if self.TRIBUTE_ENABLED and self.MONTH_3_ENABLED and self.TRIBUTE_LINK_3_MONTHS:
             links[3] = self.TRIBUTE_LINK_3_MONTHS
-        if self.TRIBUTE_LINK_6_MONTHS:
+        if self.TRIBUTE_ENABLED and self.MONTH_6_ENABLED and self.TRIBUTE_LINK_6_MONTHS:
             links[6] = self.TRIBUTE_LINK_6_MONTHS
-        if self.TRIBUTE_LINK_12_MONTHS:
+        if self.TRIBUTE_ENABLED and self.MONTH_12_ENABLED and self.TRIBUTE_LINK_12_MONTHS:
             links[12] = self.TRIBUTE_LINK_12_MONTHS
         return links
 
