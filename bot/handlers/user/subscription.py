@@ -111,6 +111,7 @@ async def select_subscription_period_callback_handler(
         currency_symbol_val,
         current_lang,
         i18n,
+        settings,
     )
 
     try:

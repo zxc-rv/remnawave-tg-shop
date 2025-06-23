@@ -93,7 +93,10 @@ This Telegram bot is designed to automate the sale and management of subscriptio
         * `YOOKASSA_PAYMENT_MODE`: e.g., `full_prepayment`.
         * `YOOKASSA_PAYMENT_SUBJECT`: e.g., `service`.
     * `TELEGRAM_WEBHOOK_BASE_URL`: (Optional) If you want Telegram updates via webhook. Can be the same as `YOOKASSA_WEBHOOK_BASE_URL`. If not set, the bot will use polling for Telegram updates.
-    * `PRICE_X_MONTH`: Prices for different subscription durations.
+    * **Payment Method Toggles:** `YOOKASSA_ENABLED`, `STARS_ENABLED`, `TRIBUTE_ENABLED`.
+    * **Subscription Options:** For each duration you can use variables like
+      `1_MONTH_ENABLED`, `RUB_PRICE_1_MONTH`, `STARS_PRICE_1_MONTH`, `TRIBUTE_LINK_1_MONTH`
+      (and corresponding variables for `3_MONTHS`, `6_MONTHS`, `12_MONTHS`).
     * **Panel API Settings:**
         * `PANEL_API_URL`: Full URL to your Remnawave panel's API (e.g., `http://localhost:3000/api` or `https://panel.yourdomain.com/api`).
         * `PANEL_API_KEY`: API Key for authenticating with the Remnawave panel.
