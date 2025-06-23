@@ -26,11 +26,13 @@ from bot.handlers.admin import admin_router_aggregate
 from bot.filters.admin_filter import AdminFilter
 
 from bot.services.notification_service import schedule_subscription_notifications
-from bot.services.payment_service import YooKassaService
+from bot.services.yookassa_service import YooKassaService
 from bot.services.panel_api_service import PanelApiService
 from bot.services.subscription_service import SubscriptionService
 from bot.services.referral_service import ReferralService
 from bot.services.promo_code_service import PromoCodeService
+from bot.services.stars_service import StarsService
+from bot.services.tribute_service import TributeService
 
 from bot.handlers.user import payment as user_payment_webhook_module
 from bot.handlers.webhooks import tribute as tribute_webhook_module
@@ -238,6 +240,12 @@ async def run_bot(settings_param: Settings):
                                        bot, i18n_instance)
     promo_code_service = PromoCodeService(settings_param, subscription_service,
                                           bot, i18n_instance)
+    stars_service = StarsService(bot, settings_param, i18n_instance,
+                                 subscription_service, referral_service)
+    tribute_service = TributeService(bot, settings_param, i18n_instance,
+                                     local_async_session_factory,
+                                     panel_service, subscription_service,
+                                     referral_service)
 
     dp["i18n_instance"] = i18n_instance
     dp["yookassa_service"] = yookassa_service
@@ -245,6 +253,8 @@ async def run_bot(settings_param: Settings):
     dp["subscription_service"] = subscription_service
     dp["referral_service"] = referral_service
     dp["promo_code_service"] = promo_code_service
+    dp["stars_service"] = stars_service
+    dp["tribute_service"] = tribute_service
     dp["async_session_factory"] = local_async_session_factory
 
     dp.update.outer_middleware(
@@ -298,6 +308,8 @@ async def run_bot(settings_param: Settings):
         app['subscription_service'] = subscription_service
         app['referral_service'] = referral_service
         app['panel_service'] = panel_service
+        app['stars_service'] = stars_service
+        app['tribute_service'] = tribute_service
 
         setup_application(app, dp, bot=bot)
 

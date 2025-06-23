@@ -17,7 +17,7 @@ from db.dal import payment_dal, user_dal
 from bot.services.subscription_service import SubscriptionService
 from bot.services.referral_service import ReferralService
 from bot.services.panel_api_service import PanelApiService
-from bot.services.payment_service import YooKassaService
+from bot.services.yookassa_service import YooKassaService
 from bot.middlewares.i18n import JsonI18n
 from config.settings import Settings
 
