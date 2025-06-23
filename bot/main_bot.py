@@ -89,18 +89,24 @@ async def on_startup_configured(dispatcher: Dispatcher):
     async_session_factory: sessionmaker = dispatcher["async_session_factory"]
 
     logging.info("STARTUP: on_startup_configured executing...")
-    scheduler = AsyncIOScheduler(timezone="UTC")
-    try:
 
-        await schedule_subscription_notifications(bot, settings, i18n_instance,
-                                                  scheduler, panel_service,
-                                                  async_session_factory)
-        scheduler.start()
-        dispatcher["scheduler"] = scheduler
-        logging.info("STARTUP: APScheduler started.")
-    except Exception as e:
-        logging.error(f"STARTUP: Failed to start APScheduler: {e}",
-                      exc_info=True)
+    existing_scheduler: Optional[AsyncIOScheduler] = dispatcher.get("scheduler")
+
+    if existing_scheduler and existing_scheduler.running:
+        logging.warning(
+            "STARTUP: Scheduler already running, skipping initialization.")
+    else:
+        scheduler = AsyncIOScheduler(timezone="UTC")
+        try:
+            await schedule_subscription_notifications(
+                bot, settings, i18n_instance, scheduler, panel_service,
+                async_session_factory)
+            scheduler.start()
+            dispatcher["scheduler"] = scheduler
+            logging.info("STARTUP: APScheduler started.")
+        except Exception as e:
+            logging.error(
+                f"STARTUP: Failed to start APScheduler: {e}", exc_info=True)
 
     telegram_webhook_url_to_set = getattr(settings,
                                           'TELEGRAM_WEBHOOK_BASE_URL', None)
