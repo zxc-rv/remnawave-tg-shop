@@ -86,7 +86,10 @@ async def tribute_webhook_route(request: web.Request):
             _ = lambda k, **kw: i18n.gettext(lang, k, **kw)
 
             applied_ref_days = referral_bonus.get('referee_bonus_applied_days') if referral_bonus else None
-            final_end = referral_bonus.get('referee_new_end_date') if referral_bonus else activation_details.get('end_date')
+            final_end = (referral_bonus.get('referee_new_end_date')
+                         if referral_bonus else None)
+            if not final_end:
+                final_end = activation_details.get('end_date')
 
             if final_end:
                 if applied_ref_days:

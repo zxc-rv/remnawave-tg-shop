@@ -468,7 +468,10 @@ async def stars_successful_payment_handler(
     await session.commit()
 
     applied_referee_days = referral_bonus_info.get("referee_bonus_applied_days") if referral_bonus_info else None
-    final_end = referral_bonus_info.get("referee_new_end_date") if referral_bonus_info else activation_details["end_date"]
+    final_end = (referral_bonus_info.get("referee_new_end_date")
+                 if referral_bonus_info else None)
+    if not final_end:
+        final_end = activation_details["end_date"]
 
     current_lang = i18n_data.get("current_language", settings.DEFAULT_LANGUAGE)
     i18n: JsonI18n = i18n_data.get("i18n_instance")
