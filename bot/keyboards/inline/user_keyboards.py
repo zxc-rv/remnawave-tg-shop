@@ -112,16 +112,17 @@ def get_payment_method_keyboard(months: int, price: float,
                                 tribute_url: Optional[str],
                                 stars_price: Optional[int],
                                 currency_symbol_val: str, lang: str,
-                                i18n_instance) -> InlineKeyboardMarkup:
+                                i18n_instance, settings: Settings) -> InlineKeyboardMarkup:
     _ = lambda key, **kwargs: i18n_instance.gettext(lang, key, **kwargs)
     builder = InlineKeyboardBuilder()
-    if stars_price is not None:
+    if settings.STARS_ENABLED and stars_price is not None:
         builder.button(text=_("pay_with_stars_button"),
                        callback_data=f"pay_stars:{months}:{stars_price}")
-    if tribute_url:
+    if settings.TRIBUTE_ENABLED and tribute_url:
         builder.button(text=_("pay_with_tribute_button"), url=tribute_url)
-    builder.button(text=_("pay_with_yookassa_button"),
-                   callback_data=f"pay_yk:{months}:{price}")
+    if settings.YOOKASSA_ENABLED:
+        builder.button(text=_("pay_with_yookassa_button"),
+                       callback_data=f"pay_yk:{months}:{price}")
     builder.button(text=_(key="cancel_button"),
                    callback_data="main_action:subscribe")
     builder.adjust(1)
