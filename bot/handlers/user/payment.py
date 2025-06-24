@@ -17,7 +17,7 @@ from db.dal import payment_dal, user_dal
 from bot.services.subscription_service import SubscriptionService
 from bot.services.referral_service import ReferralService
 from bot.services.panel_api_service import PanelApiService
-from bot.services.payment_service import YooKassaService
+from bot.services.yookassa_service import YooKassaService
 from bot.middlewares.i18n import JsonI18n
 from config.settings import Settings
 
@@ -105,7 +105,8 @@ async def process_successful_payment(session: AsyncSession, bot: Bot,
             subscription_months,
             payment_value,
             payment_db_id,
-            promo_code_id_from_payment=promo_code_id)
+            promo_code_id_from_payment=promo_code_id,
+            provider="yookassa")
 
         if not activation_details or not activation_details.get('end_date'):
             logging.error(
