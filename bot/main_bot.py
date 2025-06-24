@@ -32,10 +32,9 @@ from bot.services.subscription_service import SubscriptionService
 from bot.services.referral_service import ReferralService
 from bot.services.promo_code_service import PromoCodeService
 from bot.services.stars_service import StarsService
-from bot.services.tribute_service import TributeService
+from bot.services.tribute_service import TributeService, tribute_webhook_route
 
 from bot.handlers.user import payment as user_payment_webhook_module
-from bot.handlers.webhooks import tribute as tribute_webhook_module
 
 
 class DBSessionMiddleware(BaseMiddleware):
@@ -344,7 +343,7 @@ async def run_bot(settings_param: Settings):
         if tribute_path.startswith('/'):
             app.router.add_post(
                 tribute_path,
-                tribute_webhook_module.tribute_webhook_route)
+                tribute_webhook_route)
             logging.info(
                 f"Tribute webhook route configured at: [POST] {tribute_path}")
 

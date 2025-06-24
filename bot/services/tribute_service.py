@@ -146,3 +146,11 @@ class TributeService:
             else:
                 await session.commit()
         return web.Response(status=200, text="ok")
+
+
+async def tribute_webhook_route(request: web.Request):
+    """AIOHTTP route handler for Tribute webhook calls."""
+    tribute_service: TributeService = request.app['tribute_service']
+    raw_body = await request.read()
+    signature_header = request.headers.get('trbt-signature')
+    return await tribute_service.handle_webhook(raw_body, signature_header)
