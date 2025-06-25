@@ -98,7 +98,7 @@ This Telegram bot is designed to automate the sale and management of subscriptio
       `1_MONTH_ENABLED`, `RUB_PRICE_1_MONTH`, `STARS_PRICE_1_MONTH`, `TRIBUTE_LINK_1_MONTH`
       (and corresponding variables for `3_MONTHS`, `6_MONTHS`, `12_MONTHS`).
     * **Panel API Settings:**
-        * `PANEL_API_URL`: Full URL to your Remnawave panel's API (e.g., `http://localhost:3000/api` or `https://panel.yourdomain.com/api`).
+        * `PANEL_API_URL`: Full URL to your Remnawave panel's API (e.g., `http://remnawave:3000/api` or `https://panel.yourdomain.com/api`).
         * `PANEL_API_KEY`: API Key for authenticating with the Remnawave panel.
     * `PANEL_USER_DEFAULT_INBOUND_UUIDS`: (Optional) Comma-separated list of inbound UUIDs from your panel to assign to users. If empty, `activateAllInbounds: true` (panel default) is used for new users.
     * `TRIAL_ENABLED`, `TRIAL_DURATION_DAYS`, `TRIAL_TRAFFIC_LIMIT_GB`: Settings for the trial period.
