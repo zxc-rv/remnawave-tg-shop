@@ -540,7 +540,7 @@ class SubscriptionService:
         )
         if not active_sub or not active_sub.end_date:
             logging.info(
-                f"No active subscription found for user {user_id}. Creating new one for {bonus_days} days.""
+                f"No active subscription found for user {user_id}. Creating new one for {bonus_days} days."
             )
             start_date = datetime.now(timezone.utc)
             new_end_date_obj = start_date + timedelta(days=bonus_days)
