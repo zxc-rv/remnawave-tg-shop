@@ -70,19 +70,29 @@ class TributeService:
 
         async with async_session_factory() as session:
             if event_name == 'new_subscription':
-                payment_record = await payment_dal.create_payment_record(
-                    session,
-                    {
-                        'user_id': user_id,
-                        'amount': float(price_rub),
-                        'currency': 'RUB',
-                        'status': 'succeeded',
-                        'description': 'Tribute subscription',
-                        'subscription_duration_months': months,
-                        'provider_payment_id': str(data.get('subscription_id')),
-                        'provider': 'tribute',
-                    },
-                )
+                provider_payment_id = str(data.get('subscription_id'))
+                existing_payment = await payment_dal.get_payment_by_provider_payment_id(
+                    session, provider_payment_id)
+                if existing_payment:
+                    logging.info(
+                        "Duplicate Tribute payment webhook ignored for provider_payment_id %s",
+                        provider_payment_id,
+                    )
+                    payment_record = existing_payment
+                else:
+                    payment_record = await payment_dal.create_payment_record(
+                        session,
+                        {
+                            'user_id': user_id,
+                            'amount': float(price_rub),
+                            'currency': 'RUB',
+                            'status': 'succeeded',
+                            'description': 'Tribute subscription',
+                            'subscription_duration_months': months,
+                            'provider_payment_id': provider_payment_id,
+                            'provider': 'tribute',
+                        },
+                    )
                 activation_details = await subscription_service.activate_subscription(
                     session,
                     user_id,

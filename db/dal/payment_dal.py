@@ -46,6 +46,15 @@ async def get_payment_by_yookassa_id(
     return result.scalar_one_or_none()
 
 
+async def get_payment_by_provider_payment_id(
+        session: AsyncSession, provider_payment_id: str) -> Optional[Payment]:
+    """Fetch a payment by provider-specific identifier."""
+    stmt = select(Payment).where(
+        Payment.provider_payment_id == provider_payment_id)
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
+
+
 async def get_payment_by_db_id(session: AsyncSession,
                                payment_db_id: int) -> Optional[Payment]:
 
