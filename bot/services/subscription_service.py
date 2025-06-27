@@ -108,6 +108,7 @@ class SubscriptionService:
                 creation_response = await self.panel_service.create_panel_user(
                     username_on_panel=panel_username_on_panel_standard,
                     telegram_id=user_id,
+                    specific_inbound_uuids=self.settings.parsed_default_panel_user_inbound_uuids,
                 )
                 if (
                     creation_response
