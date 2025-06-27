@@ -226,6 +226,28 @@ class PanelApiService:
 
         return None
 
+    async def get_user(
+        self,
+        *,
+        uuid: Optional[str] = None,
+        telegram_id: Optional[int] = None,
+        username: Optional[str] = None,
+        email: Optional[str] = None,
+        log_response: bool = True,
+    ) -> Optional[Dict[str, Any]]:
+        if uuid:
+            return await self.get_user_by_uuid(uuid, log_response=log_response)
+
+        users = await self.get_users_by_filter(
+            telegram_id=telegram_id,
+            username=username,
+            email=email,
+            log_response=log_response,
+        )
+        if users:
+            return users[0]
+        return None
+
     async def get_users_by_filter(
             self,
             telegram_id: Optional[int] = None,
