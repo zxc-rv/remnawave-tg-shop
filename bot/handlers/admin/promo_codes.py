@@ -1,5 +1,6 @@
 import logging
 from aiogram import Router, F, types, Bot
+from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -336,7 +337,10 @@ async def promo_delete_handler(callback: types.CallbackQuery, i18n_data: dict,
 
 @router.callback_query(
     F.data == "admin_action:main",
-    AdminStates.waiting_for_promo_details | AdminStates.waiting_for_promo_edit_details,
+    StateFilter(
+        AdminStates.waiting_for_promo_details,
+        AdminStates.waiting_for_promo_edit_details,
+    ),
 )
 async def cancel_promo_creation_state_to_menu(callback: types.CallbackQuery,
                                               state: FSMContext,
