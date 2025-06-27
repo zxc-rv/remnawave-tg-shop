@@ -49,6 +49,27 @@ async def get_all_active_promo_codes(session: AsyncSession,
     return result.scalars().all()
 
 
+async def update_promo_code(session: AsyncSession, promo_id: int,
+                            update_data: Dict[str, Any]) -> Optional[PromoCode]:
+    promo = await get_promo_code_by_id(session, promo_id)
+    if not promo:
+        return None
+    for key, value in update_data.items():
+        setattr(promo, key, value)
+    await session.flush()
+    await session.refresh(promo)
+    return promo
+
+
+async def delete_promo_code(session: AsyncSession, promo_id: int) -> Optional[PromoCode]:
+    promo = await get_promo_code_by_id(session, promo_id)
+    if not promo:
+        return None
+    await session.delete(promo)
+    await session.flush()
+    return promo
+
+
 async def increment_promo_code_usage(
         session: AsyncSession, promo_code_id: int) -> Optional[PromoCode]:
     promo = await get_promo_code_by_id(session, promo_code_id)

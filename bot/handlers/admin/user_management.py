@@ -28,20 +28,16 @@ USERNAME_REGEX = re.compile(r"^[a-zA-Z0-9_]{5,32}$")
 
 async def _get_user_model_by_input(session: AsyncSession,
                                    input_text: str) -> Optional[User]:
-
-    user_model: Optional[User] = None
     if input_text.isdigit():
         try:
-            user_model = await user_dal.get_user_by_id(session,
-                                                       int(input_text))
+            return await user_dal.get_user(session, user_id=int(input_text))
         except ValueError:
-            pass
-    elif input_text.startswith("@") and USERNAME_REGEX.match(input_text[1:]):
-        user_model = await user_dal.get_user_by_username(
-            session, input_text[1:])
-    elif USERNAME_REGEX.match(input_text):
-        user_model = await user_dal.get_user_by_username(session, input_text)
-    return user_model
+            return None
+    if input_text.startswith("@") and USERNAME_REGEX.match(input_text[1:]):
+        return await user_dal.get_user(session, username=input_text[1:])
+    if USERNAME_REGEX.match(input_text):
+        return await user_dal.get_user(session, username=input_text)
+    return None
 
 
 async def ban_user_prompt_handler(callback: types.CallbackQuery,
