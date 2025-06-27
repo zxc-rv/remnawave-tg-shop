@@ -18,6 +18,8 @@ def get_admin_panel_keyboard(i18n_instance, lang: str,
                    callback_data="admin_action:broadcast")
     builder.button(text=_(key="admin_create_promo_button"),
                    callback_data="admin_action:create_promo")
+    builder.button(text=_(key="admin_manage_promos_button"),
+                   callback_data="admin_action:manage_promos")
     builder.button(text=_(key="admin_view_promos_button"),
                    callback_data="admin_action:view_promos")
     builder.button(text=_(key="admin_ban_user_button"),

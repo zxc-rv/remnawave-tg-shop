@@ -24,6 +24,7 @@ router = Router(name="admin_common_router")
 @router.message(Command("admin"))
 async def admin_panel_command_handler(
     message: types.Message,
+    state: FSMContext,
     settings: Settings,
     i18n_data: dict,
 ):
@@ -34,6 +35,7 @@ async def admin_panel_command_handler(
         await message.answer("Language service error.")
         return
 
+    await state.clear()
     _ = lambda key, **kwargs: i18n.gettext(current_lang, key, **kwargs)
     await message.answer(_(key="admin_panel_title"),
                          reply_markup=get_admin_panel_keyboard(
@@ -73,6 +75,9 @@ async def admin_panel_actions_callback_handler(
     elif action == "create_promo":
         await admin_promo_handlers.create_promo_prompt_handler(
             callback, state, i18n_data, settings, session)
+    elif action == "manage_promos":
+        await admin_promo_handlers.manage_promo_codes_handler(
+            callback, i18n_data, settings, session)
     elif action == "view_promos":
         await admin_promo_handlers.view_promo_codes_handler(
             callback, i18n_data, settings, session)
