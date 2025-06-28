@@ -99,6 +99,26 @@ class SubscriptionService:
                     logging.warning(
                         f"Local panel_uuid {current_local_panel_uuid} for TG user {user_id} also not found on panel. User might be deleted from panel or UUID desynced."
                     )
+                    logging.info(
+                        f"Creating new panel user '{panel_username_on_panel_standard}' for TG user {user_id}."
+                    )
+                    creation_response = await self.panel_service.create_panel_user(
+                        username_on_panel=panel_username_on_panel_standard,
+                        telegram_id=user_id,
+                        specific_inbound_uuids=self.settings.parsed_user_inbound_uuids,
+                        default_traffic_limit_bytes=self.settings.user_traffic_limit_bytes,
+                        default_traffic_limit_strategy=self.settings.USER_TRAFFIC_STRATEGY,
+                    )
+                    if (
+                        creation_response
+                        and not creation_response.get("error")
+                        and creation_response.get("response")
+                    ):
+                        panel_user_obj_from_api = creation_response.get("response")
+                        panel_user_created_or_linked_now = True
+                    else:
+                        await self._notify_admin_panel_user_creation_failed(user_id)
+                        return None, None, None, False
 
             else:
 
@@ -108,7 +128,9 @@ class SubscriptionService:
                 creation_response = await self.panel_service.create_panel_user(
                     username_on_panel=panel_username_on_panel_standard,
                     telegram_id=user_id,
-                    specific_inbound_uuids=self.settings.parsed_default_panel_user_inbound_uuids,
+                    specific_inbound_uuids=self.settings.parsed_user_inbound_uuids,
+                    default_traffic_limit_bytes=self.settings.user_traffic_limit_bytes,
+                    default_traffic_limit_strategy=self.settings.USER_TRAFFIC_STRATEGY,
                 )
                 if (
                     creation_response
@@ -333,11 +355,11 @@ class SubscriptionService:
             ),
             "status": "ACTIVE",
             "trafficLimitBytes": self.settings.trial_traffic_limit_bytes,
-            "trafficLimitStrategy": self.settings.PANEL_USER_DEFAULT_TRAFFIC_STRATEGY,
+            "trafficLimitStrategy": self.settings.USER_TRAFFIC_STRATEGY,
         }
-        if self.settings.parsed_default_panel_user_inbound_uuids:
+        if self.settings.parsed_user_inbound_uuids:
             panel_update_payload["activeUserInbounds"] = (
-                self.settings.parsed_default_panel_user_inbound_uuids
+                self.settings.parsed_user_inbound_uuids
             )
         elif panel_user_created_now:
             panel_update_payload["activateAllInbounds"] = True
@@ -460,7 +482,7 @@ class SubscriptionService:
             "duration_months": months,
             "is_active": True,
             "status_from_panel": "ACTIVE",
-            "traffic_limit_bytes": self.settings.PANEL_USER_DEFAULT_TRAFFIC_BYTES,
+            "traffic_limit_bytes": self.settings.user_traffic_limit_bytes,
             "provider": provider,
             "skip_notifications": provider == "tribute",
         }
@@ -481,12 +503,12 @@ class SubscriptionService:
                 "+00:00", "Z"
             ),
             "status": "ACTIVE",
-            "trafficLimitBytes": self.settings.PANEL_USER_DEFAULT_TRAFFIC_BYTES,
-            "trafficLimitStrategy": self.settings.PANEL_USER_DEFAULT_TRAFFIC_STRATEGY,
+            "trafficLimitBytes": self.settings.user_traffic_limit_bytes,
+            "trafficLimitStrategy": self.settings.USER_TRAFFIC_STRATEGY,
         }
-        if self.settings.parsed_default_panel_user_inbound_uuids:
+        if self.settings.parsed_user_inbound_uuids:
             panel_update_payload["activeUserInbounds"] = (
-                self.settings.parsed_default_panel_user_inbound_uuids
+                self.settings.parsed_user_inbound_uuids
             )
         elif panel_user_created_now:
             panel_update_payload["activateAllInbounds"] = True
@@ -554,7 +576,7 @@ class SubscriptionService:
                 "duration_months": 0,
                 "is_active": True,
                 "status_from_panel": "ACTIVE_BONUS",
-                "traffic_limit_bytes": self.settings.PANEL_USER_DEFAULT_TRAFFIC_BYTES,
+                "traffic_limit_bytes": self.settings.user_traffic_limit_bytes,
             }
             await subscription_dal.deactivate_other_active_subscriptions(
                 session, panel_uuid, panel_sub_uuid

@@ -100,7 +100,8 @@ This Telegram bot is designed to automate the sale and management of subscriptio
     * **Panel API Settings:**
         * `PANEL_API_URL`: Full URL to your Remnawave panel's API (e.g., `http://remnawave:3000/api` or `https://panel.yourdomain.com/api`).
         * `PANEL_API_KEY`: API Key for authenticating with the Remnawave panel.
-    * `PANEL_USER_DEFAULT_INBOUND_UUIDS`: (Optional) Comma-separated list of inbound UUIDs from your panel to assign to users. If empty, `activateAllInbounds: true` (panel default) is used for new users.
+    * `USER_INBOUND_UUIDS`: (Optional) Comma-separated list of inbound UUIDs from your panel to assign to users. If empty, `activateAllInbounds: true` (panel default) is used for new users.
+    * `USER_TRAFFIC_LIMIT_GB` and `USER_TRAFFIC_STRATEGY`: Default traffic limit in gigabytes (0 for unlimited) and the reset strategy applied when updating users on the panel.
     * `TRIAL_ENABLED`, `TRIAL_DURATION_DAYS`, `TRIAL_TRAFFIC_LIMIT_GB`: Settings for the trial period.
     * `WEB_SERVER_HOST`, `WEB_SERVER_PORT`: Host and port for the bot's internal webhook server.
     * `LOGS_PAGE_SIZE`: For admin panel log pagination.
