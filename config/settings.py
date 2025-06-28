@@ -86,10 +86,9 @@ class Settings(BaseSettings):
 
     PANEL_API_URL: Optional[str] = None
     PANEL_API_KEY: Optional[str] = None
-    PANEL_USER_DEFAULT_EXPIRE_DAYS: int = Field(default=1)
-    PANEL_USER_DEFAULT_TRAFFIC_BYTES: int = Field(default=0)
-    PANEL_USER_DEFAULT_TRAFFIC_STRATEGY: str = Field(default="NO_RESET")
-    PANEL_USER_DEFAULT_INBOUND_UUIDS: Optional[str] = Field(
+    USER_TRAFFIC_LIMIT_GB: Optional[float] = Field(default=0.0)
+    USER_TRAFFIC_STRATEGY: str = Field(default="NO_RESET")
+    USER_INBOUND_UUIDS: Optional[str] = Field(
         default=None,
         description=
         "Comma-separated UUIDs of inbounds to activate for new panel users")
@@ -139,11 +138,18 @@ class Settings(BaseSettings):
 
     @computed_field
     @property
-    def parsed_default_panel_user_inbound_uuids(self) -> Optional[List[str]]:
-        if self.PANEL_USER_DEFAULT_INBOUND_UUIDS:
+    def user_traffic_limit_bytes(self) -> int:
+        if self.USER_TRAFFIC_LIMIT_GB is None or self.USER_TRAFFIC_LIMIT_GB <= 0:
+            return 0
+        return int(self.USER_TRAFFIC_LIMIT_GB * (1024**3))
+
+    @computed_field
+    @property
+    def parsed_user_inbound_uuids(self) -> Optional[List[str]]:
+        if self.USER_INBOUND_UUIDS:
             return [
                 uuid.strip()
-                for uuid in self.PANEL_USER_DEFAULT_INBOUND_UUIDS.split(',')
+                for uuid in self.USER_INBOUND_UUIDS.split(',')
                 if uuid.strip()
             ]
         return None

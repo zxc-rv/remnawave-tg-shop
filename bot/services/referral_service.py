@@ -137,8 +137,7 @@ class ReferralService:
                                     "status_from_panel":
                                     "ACTIVE_BONUS",
                                     "traffic_limit_bytes":
-                                    self.settings.
-                                    PANEL_USER_DEFAULT_TRAFFIC_BYTES,
+                                    self.settings.user_traffic_limit_bytes,
                                 }
                                 try:
                                     await subscription_dal.deactivate_other_active_subscriptions(
