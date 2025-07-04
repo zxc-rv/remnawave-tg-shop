@@ -84,6 +84,7 @@ This Telegram bot is designed to automate the sale and management of subscriptio
     * `SUPPORT_LINK`: (Optional) URL for a support chat/contact (e.g., `https://t.me/your_support`).
     * `SERVER_STATUS_URL`: (Optional) URL to a server status page (e.g., Uptime Kuma).
     * `SUBSCRIPTION_MINI_APP_URL`: (Optional) URL of the Telegram mini app for viewing subscription details. If set, the "My Subscription" button will open this mini app and the bot will register it automatically via API.
+    * `START_COMMAND_DESCRIPTION`: (Optional) Description for the `/start` command shown in the bot's menu.
     * **YooKassa Settings:**
         * `YOOKASSA_SHOP_ID`: Your shop ID from YooKassa.
         * `YOOKASSA_SECRET_KEY`: Your secret key from YooKassa.
