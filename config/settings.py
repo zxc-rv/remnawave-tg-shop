@@ -103,6 +103,8 @@ class Settings(BaseSettings):
 
     SUBSCRIPTION_MINI_APP_URL: Optional[str] = Field(default=None)
 
+    START_COMMAND_DESCRIPTION: Optional[str] = Field(default=None)
+
     @computed_field
     @property
     def DATABASE_URL(self) -> str:
