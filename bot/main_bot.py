@@ -3,7 +3,13 @@ import asyncio
 from typing import Callable, Dict, Any, Awaitable, Optional
 
 from aiogram import Bot, Dispatcher, BaseMiddleware, Router, F
-from aiogram.types import Update, MenuButtonDefault, BotCommand
+from aiogram.types import (
+    Update,
+    MenuButtonDefault,
+    MenuButtonWebApp,
+    WebAppInfo,
+    BotCommand,
+)
 from aiogram.enums import ParseMode
 from aiogram.filters import CommandStart, Command
 from aiogram.client.default import DefaultBotProperties
@@ -173,10 +179,24 @@ async def on_startup_configured(dispatcher: Dispatcher):
 
     if settings.SUBSCRIPTION_MINI_APP_URL:
         try:
-            await bot.set_chat_menu_button(MenuButtonDefault())
-            logging.info("STARTUP: Mini app support enabled with default menu button.")
+            menu_text = i18n_instance.gettext(
+                settings.DEFAULT_LANGUAGE,
+                "menu_my_subscription_inline",
+            )
+            await bot.set_chat_menu_button(
+                menu_button=MenuButtonWebApp(
+                    text=menu_text,
+                    web_app=WebAppInfo(url=settings.SUBSCRIPTION_MINI_APP_URL),
+                )
+            )
+            await bot.set_chat_menu_button(menu_button=MenuButtonDefault())
+            logging.info(
+                "STARTUP: Mini app domain registered and default menu button restored."
+            )
         except Exception as e:
-            logging.error(f"STARTUP: Failed to set default menu button: {e}", exc_info=True)
+            logging.error(
+                f"STARTUP: Failed to register mini app domain: {e}", exc_info=True
+            )
 
     if settings.START_COMMAND_DESCRIPTION:
         try:
