@@ -231,3 +231,25 @@ async def set_skip_notifications_for_provider(
         Subscription.provider == provider).values(skip_notifications=skip))
     result = await session.execute(stmt)
     return result.rowcount
+
+
+async def get_active_subscriptions_for_autorenew(
+        session: AsyncSession, provider: str,
+        days_threshold: int = 1,
+        require_skip_flag: bool = True) -> List[Subscription]:
+    """Fetch active subscriptions nearing expiration for auto-renew logic."""
+
+    now_utc = datetime.now(timezone.utc)
+    threshold_date = now_utc + timedelta(days=days_threshold)
+
+    conditions = [
+        Subscription.provider == provider,
+        Subscription.is_active == True,
+        Subscription.end_date <= threshold_date,
+    ]
+    if require_skip_flag:
+        conditions.append(Subscription.skip_notifications == True)
+
+    stmt = select(Subscription).where(*conditions)
+    result = await session.execute(stmt)
+    return result.scalars().all()

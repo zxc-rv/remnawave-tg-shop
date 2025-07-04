@@ -96,6 +96,19 @@ async def update_payment_status_by_db_id(
     return payment
 
 
+async def user_has_successful_payment_for_provider(
+        session: AsyncSession, user_id: int, provider: str) -> bool:
+    """Check if a user has at least one successful payment for the provider."""
+
+    stmt = (select(Payment.payment_id)
+            .where(Payment.user_id == user_id,
+                   Payment.provider == provider,
+                   Payment.status == 'succeeded')
+            .limit(1))
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none() is not None
+
+
 async def update_payment_status_by_yk_id(session: AsyncSession,
                                          yookassa_payment_id: str,
                                          new_status: str) -> Optional[Payment]:
