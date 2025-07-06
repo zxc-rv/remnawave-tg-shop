@@ -7,6 +7,7 @@ from datetime import datetime
 from config.settings import Settings
 from bot.services.subscription_service import SubscriptionService
 from bot.services.panel_api_service import PanelApiService
+from bot.services.notification_service import notify_admin_new_trial
 from bot.keyboards.inline.user_keyboards import (
     get_trial_confirmation_keyboard,
     get_main_menu_inline_keyboard,
@@ -188,6 +189,15 @@ async def confirm_activate_trial_handler(
                 ),
                 disable_web_page_preview=True,
             )
+
+    if activation_result and activation_result.get("activated") and end_date_obj:
+        await notify_admin_new_trial(
+            callback.bot,
+            settings,
+            i18n,
+            user_id,
+            end_date_obj,
+        )
 
 
 @router.callback_query(F.data == "main_action:cancel_trial")

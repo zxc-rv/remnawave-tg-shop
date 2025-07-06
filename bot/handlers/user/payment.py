@@ -20,6 +20,7 @@ from bot.services.panel_api_service import PanelApiService
 from bot.services.yookassa_service import YooKassaService
 from bot.middlewares.i18n import JsonI18n
 from config.settings import Settings
+from bot.services.notification_service import notify_admin_new_payment
 
 payment_processing_lock = asyncio.Lock()
 
@@ -174,6 +175,15 @@ async def process_successful_payment(session: AsyncSession, bot: Bot,
             logging.error(
                 f"Failed to send final payment success message to user {user_id}: {e_notify}"
             )
+
+        await notify_admin_new_payment(
+            bot,
+            settings,
+            i18n,
+            user_id,
+            subscription_months,
+            payment_value,
+        )
 
     except Exception as e_process:
         logging.error(

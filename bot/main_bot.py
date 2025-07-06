@@ -32,7 +32,6 @@ from bot.handlers.admin import admin_router_aggregate
 from bot.filters.admin_filter import AdminFilter
 
 from bot.services.notification_service import schedule_subscription_notifications
-from bot.services.auto_renew_service import schedule_tribute_autorenew
 from bot.services.yookassa_service import YooKassaService
 from bot.services.panel_api_service import PanelApiService
 from bot.services.subscription_service import SubscriptionService
@@ -113,12 +112,6 @@ async def on_startup_configured(dispatcher: Dispatcher):
                 bot,
                 settings,
                 i18n_instance,
-                scheduler,
-                panel_service,
-                async_session_factory,
-            )
-            schedule_tribute_autorenew(
-                settings,
                 scheduler,
                 panel_service,
                 async_session_factory,
