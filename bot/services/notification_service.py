@@ -133,3 +133,46 @@ async def schedule_subscription_notifications(
     logging.info(
         f"Subscription expiration warning job scheduled daily at {notification_hour:02d}:{notification_minute:02d} UTC."
     )
+
+
+async def notify_admins(bot: Bot, settings: Settings, i18n: JsonI18n,
+                        message_key: str, parse_mode: str | None = None,
+                        **kwargs) -> None:
+    if not settings.ADMIN_IDS:
+        return
+    admin_lang = settings.DEFAULT_LANGUAGE
+    msg = i18n.gettext(admin_lang, message_key, **kwargs)
+    for admin_id in settings.ADMIN_IDS:
+        try:
+            await bot.send_message(admin_id, msg, parse_mode=parse_mode)
+        except Exception as e:
+            logging.error(f"Failed to send admin notification to {admin_id}: {e}")
+
+
+async def notify_admin_new_trial(bot: Bot, settings: Settings, i18n: JsonI18n,
+                                 user_id: int, end_date: datetime) -> None:
+    end_date_str = end_date.strftime('%Y-%m-%d') if isinstance(end_date, datetime) else str(end_date)
+    await notify_admins(
+        bot,
+        settings,
+        i18n,
+        "admin_new_trial_notification",
+        user_id=user_id,
+        end_date=end_date_str,
+    )
+
+
+async def notify_admin_new_payment(bot: Bot, settings: Settings, i18n: JsonI18n,
+                                   user_id: int, months: int, amount: float,
+                                   currency: str | None = None) -> None:
+    currency_symbol = currency or settings.DEFAULT_CURRENCY_SYMBOL
+    await notify_admins(
+        bot,
+        settings,
+        i18n,
+        "admin_new_payment_notification",
+        user_id=user_id,
+        months=months,
+        amount=f"{amount:.2f}",
+        currency=currency_symbol,
+    )
