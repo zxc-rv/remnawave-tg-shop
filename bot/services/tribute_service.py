@@ -16,6 +16,26 @@ from bot.services.referral_service import ReferralService
 from db.dal import payment_dal, user_dal, subscription_dal
 
 
+def convert_period_to_months(period: Optional[str]) -> int:
+    """Map Tribute subscription period strings to months."""
+    if not period:
+        return 1
+
+    mapping = {
+        "monthly": 1,
+        "quarterly": 3,
+        "3-month": 3,
+        "3months": 3,
+        "3-months": 3,
+        "q": 3,
+        "halfyearly": 6,
+        "yearly": 12,
+        "annual": 12,
+        "y": 12,
+    }
+    return mapping.get(period.lower(), 1)
+
+
 class TributeService:
     def __init__(self, bot: Bot, settings: Settings, i18n: JsonI18n,
                  async_session_factory: sessionmaker,
@@ -60,13 +80,9 @@ class TributeService:
         if not user_id or price_val is None:
             return web.Response(status=200, text="ok_missing_fields")
 
-        months_map = {int(v): m for m, v in settings.subscription_options.items()}
+        period_val = data.get('period')
+        months = convert_period_to_months(period_val)
         price_rub = price_val / 100
-        months = months_map.get(int(price_rub))
-        if not months:
-            logging.warning(
-                f"Tribute webhook: price {price_val} not mapped to months")
-            return web.Response(status=200, text="ok_price_unmapped")
 
         async with async_session_factory() as session:
             if event_name == 'new_subscription':
