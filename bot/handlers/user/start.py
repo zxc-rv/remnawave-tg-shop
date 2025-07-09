@@ -1,5 +1,6 @@
 import logging
 from aiogram import Router, F, types, Bot
+from aiogram.utils.text_decorations import html_decoration as hd
 from aiogram.filters import CommandStart, Command
 from aiogram.fsm.context import FSMContext
 from typing import Optional, Union
@@ -30,7 +31,7 @@ async def send_main_menu(target_event: Union[types.Message,
     i18n: Optional[JsonI18n] = i18n_data.get("i18n_instance")
 
     user_id = target_event.from_user.id
-    user_full_name = target_event.from_user.full_name
+    user_full_name = hd.quote(target_event.from_user.full_name)
 
     if not i18n:
         logging.error(
@@ -192,7 +193,7 @@ async def start_command_handler(message: types.Message,
                     f"Failed to update existing user {user_id} in session: {e_update}",
                     exc_info=True)
 
-    await message.answer(_(key="welcome", user_name=user.full_name))
+    await message.answer(_(key="welcome", user_name=hd.quote(user.full_name)))
     await send_main_menu(message,
                          settings,
                          i18n_data,
