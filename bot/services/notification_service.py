@@ -1,6 +1,7 @@
 import logging
 import asyncio
 from aiogram import Bot
+from aiogram.utils.text_decorations import html_decoration as hd
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from datetime import datetime, timezone
 
@@ -48,7 +49,7 @@ async def send_expiration_warnings(bot: Bot, settings: Settings,
                 user_id = sub_details['user_id']
                 user_lang = sub_details.get('language_code',
                                             settings.DEFAULT_LANGUAGE)
-                first_name = sub_details.get('first_name', f"User {user_id}")
+                first_name = hd.quote(sub_details.get('first_name', f"User {user_id}"))
                 end_date_str_for_msg = sub_details.get('end_date_str', "N/A")
                 days_left_display = sub_details.get('days_left', "N/A")
 
