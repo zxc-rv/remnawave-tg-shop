@@ -81,8 +81,17 @@ class PanelWebhookService:
         user_data = payload.get("payload") or payload.get("data", {})
         if isinstance(user_data, dict) and "user" in user_data:
             user_data = user_data.get("user") or user_data
+
+        telegram_id = user_data.get("telegramId") if isinstance(user_data, dict) else None
+
         if not event_name:
             return web.Response(status=200, text="ok_no_event")
+
+        logging.info(
+            "Panel webhook event received: %s; telegramId=%s",
+            event_name,
+            telegram_id if telegram_id is not None else "N/A",
+        )
 
         await self.handle_event(event_name, user_data)
         return web.Response(status=200, text="ok")
