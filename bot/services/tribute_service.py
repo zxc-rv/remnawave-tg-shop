@@ -13,6 +13,7 @@ from bot.middlewares.i18n import JsonI18n
 from bot.services.subscription_service import SubscriptionService
 from bot.services.panel_api_service import PanelApiService
 from bot.services.referral_service import ReferralService
+from .notification_service import notify_admin_new_payment
 from db.dal import payment_dal, user_dal, subscription_dal
 
 
@@ -157,6 +158,16 @@ class TributeService:
                     except Exception as e:
                         logging.error(
                             f"Failed to send Tribute payment success message to user {user_id}: {e}")
+
+                await notify_admin_new_payment(
+                    bot,
+                    settings,
+                    i18n,
+                    user_id,
+                    months,
+                    float(price_rub),
+                    currency="RUB",
+                )
             elif event_name == 'cancelled_subscription':
                 db_user = await user_dal.get_user_by_id(session, user_id)
                 lang = db_user.language_code if db_user and db_user.language_code else settings.DEFAULT_LANGUAGE

@@ -216,6 +216,7 @@
 
   "admin_new_trial_notification": "\ud83c\udf21 Пользователь {user_id} активировал пробный период до {end_date}.",
   "admin_new_payment_notification": "\ud83d\udcb3 Получен платеж от пользователя {user_id}: {months} мес. за {amount} {currency}.",
+  "admin_promo_activation_notification": "\ud83c\udf81 Пользователь {user_id} активировал промокод {code} (+{bonus_days} дн.)",
 
   "error_unknown": "Произошла неизвестная ошибка."
 }

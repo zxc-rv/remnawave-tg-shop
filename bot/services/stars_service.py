@@ -10,6 +10,7 @@ from db.dal import payment_dal, user_dal
 from .subscription_service import SubscriptionService
 from .referral_service import ReferralService
 from bot.middlewares.i18n import JsonI18n
+from .notification_service import notify_admin_new_payment
 
 
 class StarsService:
@@ -132,4 +133,14 @@ class StarsService:
         except Exception as e_send:
             logging.error(
                 f"Failed to send stars payment success message: {e_send}")
+
+        await notify_admin_new_payment(
+            self.bot,
+            self.settings,
+            self.i18n,
+            message.from_user.id,
+            months,
+            float(stars_amount),
+            currency="XTR",
+        )
 
