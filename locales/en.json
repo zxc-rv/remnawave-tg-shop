@@ -216,6 +216,7 @@
 
   "admin_new_trial_notification": "\ud83c\udf21 User {user_id} activated a free trial until {end_date}.",
   "admin_new_payment_notification": "\ud83d\udcb3 Payment received from user {user_id}: {months} mo. for {amount} {currency}.",
+  "admin_promo_activation_notification": "\ud83c\udf81 Promo code {code} activated by user {user_id} (+{bonus_days}d).",
 
   "error_unknown": "An unknown error occurred."
 }

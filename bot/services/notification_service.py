@@ -177,3 +177,18 @@ async def notify_admin_new_payment(bot: Bot, settings: Settings, i18n: JsonI18n,
         amount=f"{amount:.2f}",
         currency=currency_symbol,
     )
+
+
+async def notify_admin_promo_activation(bot: Bot, settings: Settings,
+                                        i18n: JsonI18n, user_id: int,
+                                        code: str,
+                                        bonus_days: int) -> None:
+    await notify_admins(
+        bot,
+        settings,
+        i18n,
+        "admin_promo_activation_notification",
+        user_id=user_id,
+        code=code,
+        bonus_days=bonus_days,
+    )

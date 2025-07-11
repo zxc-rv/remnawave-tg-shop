@@ -10,6 +10,7 @@ from db.models import PromoCode, User
 
 from .subscription_service import SubscriptionService
 from bot.middlewares.i18n import JsonI18n
+from .notification_service import notify_admin_promo_activation
 
 
 class PromoCodeService:
@@ -56,7 +57,14 @@ class PromoCodeService:
                 session, promo_data.promo_code_id)
 
             if activation_recorded and promo_incremented:
-
+                await notify_admin_promo_activation(
+                    self.bot,
+                    self.settings,
+                    self.i18n,
+                    user_id,
+                    code_input_upper,
+                    bonus_days,
+                )
                 return True, _("promo_code_applied_success",
                                code=code_input_upper,
                                bonus_days=bonus_days,
