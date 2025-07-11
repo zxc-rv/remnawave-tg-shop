@@ -78,7 +78,12 @@ class PanelWebhookService:
             return web.Response(status=400, text="bad_request")
 
         event_name = payload.get("name") or payload.get("event")
-        user_data = payload.get("payload", {}).get("user") or payload.get("payload", {})
+        user_data = (
+            payload.get("payload", {}).get("user")
+            or payload.get("payload", {})
+            or payload.get("data", {}).get("user")
+            or payload.get("data", {})
+        )
         if not event_name:
             return web.Response(status=200, text="ok_no_event")
 
