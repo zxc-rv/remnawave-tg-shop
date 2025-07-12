@@ -4,10 +4,12 @@ import hmac
 import hashlib
 from aiohttp import web
 from aiogram import Bot
+from aiogram.types import InlineKeyboardMarkup
 from sqlalchemy.orm import sessionmaker
 from typing import Optional
 from config.settings import Settings
 from bot.middlewares.i18n import JsonI18n
+from bot.keyboards.inline.user_keyboards import get_subscribe_only_markup
 from db.dal import user_dal
 
 EVENT_MAP = {
@@ -23,10 +25,19 @@ class PanelWebhookService:
         self.i18n = i18n
         self.async_session_factory = async_session_factory
 
-    async def _send_message(self, user_id: int, lang: str, message_key: str, **kwargs):
+    async def _send_message(
+        self,
+        user_id: int,
+        lang: str,
+        message_key: str,
+        reply_markup: InlineKeyboardMarkup | None = None,
+        **kwargs,
+    ):
         _ = lambda k, **kw: self.i18n.gettext(lang, k, **kw)
         try:
-            await self.bot.send_message(user_id, _(message_key, **kwargs))
+            await self.bot.send_message(
+                user_id, _(message_key, **kwargs), reply_markup=reply_markup
+            )
         except Exception as e:
             logging.error(f"Failed to send notification to {user_id}: {e}")
 
@@ -45,6 +56,8 @@ class PanelWebhookService:
             lang = db_user.language_code if db_user and db_user.language_code else self.settings.DEFAULT_LANGUAGE
             first_name = db_user.first_name or f"User {user_id}" if db_user else f"User {user_id}"
 
+        markup = get_subscribe_only_markup(lang, self.i18n)
+
         if event_name in EVENT_MAP:
             days_left, msg_key = EVENT_MAP[event_name]
             if days_left <= self.settings.SUBSCRIPTION_NOTIFY_DAYS_BEFORE:
@@ -52,13 +65,28 @@ class PanelWebhookService:
                     user_id,
                     lang,
                     msg_key,
+                    reply_markup=markup,
                     user_name=first_name,
                     end_date=user_payload.get("expireAt", "")[:10],
                 )
         elif event_name == "user.expired" and self.settings.SUBSCRIPTION_NOTIFY_ON_EXPIRE:
-            await self._send_message(user_id, lang, "subscription_expired_notification")
+            await self._send_message(
+                user_id,
+                lang,
+                "subscription_expired_notification",
+                reply_markup=markup,
+                user_name=first_name,
+                end_date=user_payload.get("expireAt", "")[:10],
+            )
         elif event_name == "user.expired_24_hours_ago" and self.settings.SUBSCRIPTION_NOTIFY_AFTER_EXPIRE:
-            await self._send_message(user_id, lang, "subscription_expired_yesterday_notification")
+            await self._send_message(
+                user_id,
+                lang,
+                "subscription_expired_yesterday_notification",
+                reply_markup=markup,
+                user_name=first_name,
+                end_date=user_payload.get("expireAt", "")[:10],
+            )
 
     async def handle_webhook(self, raw_body: bytes, signature_header: Optional[str]) -> web.Response:
         if self.settings.PANEL_WEBHOOK_SECRET:

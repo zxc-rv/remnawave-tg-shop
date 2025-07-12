@@ -169,6 +169,14 @@ def get_back_to_main_menu_markup(lang: str,
     return builder.as_markup()
 
 
+def get_subscribe_only_markup(lang: str, i18n_instance) -> InlineKeyboardMarkup:
+    _ = lambda key, **kwargs: i18n_instance.gettext(lang, key, **kwargs)
+    builder = InlineKeyboardBuilder()
+    builder.button(text=_(key="menu_subscribe_inline"),
+                   callback_data="main_action:subscribe")
+    return builder.as_markup()
+
+
 def get_user_banned_keyboard(support_link: Optional[str], lang: str,
                              i18n_instance) -> Optional[InlineKeyboardMarkup]:
     if not support_link:
