@@ -170,20 +170,17 @@ async def process_successful_payment(session: AsyncSession, bot: Bot,
             )
             success_message = _("payment_successful_error_details")
 
-        try:
-            await bot.send_message(user_id, success_message)
-        except Exception as e_notify:
-            logging.error(
-                f"Failed to send final payment success message to user {user_id}: {e_notify}"
-            )
-
         config_link = activation_details.get("subscription_url") or _(
             "config_link_not_available"
         )
-        details_message = _(
-            "payment_successful_full",
-            end_date=final_end_date_for_user.strftime("%d.%m.%Y %H:%M:%S"),
-            config_link=config_link,
+        details_message = (
+            success_message
+            + "\n\n"
+            + _(
+                "payment_successful_full",
+                end_date=final_end_date_for_user.strftime("%d.%m.%Y %H:%M:%S"),
+                config_link=config_link,
+            )
         )
         details_markup = get_connect_and_main_keyboard(
             user_lang, i18n, settings, config_link

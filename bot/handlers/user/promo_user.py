@@ -10,7 +10,11 @@ from config.settings import Settings
 from bot.states.user_states import UserPromoStates
 from bot.services.promo_code_service import PromoCodeService
 from bot.services.subscription_service import SubscriptionService
-from bot.keyboards.inline.user_keyboards import get_back_to_main_menu_markup
+from bot.keyboards.inline.user_keyboards import (
+    get_back_to_main_menu_markup,
+    get_connect_and_main_keyboard,
+)
+from datetime import datetime
 from bot.middlewares.i18n import JsonI18n
 
 from .start import send_main_menu
@@ -126,24 +130,42 @@ async def process_promo_code_input(message: types.Message, state: FSMContext,
                                   code=hcode(code_input.upper()))
     else:
 
-        success, response_text_from_service = await promo_code_service.apply_promo_code(
+        success, result = await promo_code_service.apply_promo_code(
             session, user.id, code_input, current_lang)
-        response_to_user_text = response_text_from_service
         if success:
             await session.commit()
             logging.info(
                 f"Promo code '{code_input}' successfully applied for user {user.id}."
             )
+
+            new_end_date = result if isinstance(result, datetime) else None
+            active = await subscription_service.get_active_subscription_details(session, user.id)
+            config_link = active.get("config_link") if active else None
+            config_link = config_link or _("config_link_not_available")
+
+            response_to_user_text = _(
+                "promo_code_applied_success_full",
+                end_date=(new_end_date.strftime("%d.%m.%Y %H:%M:%S") if new_end_date else "N/A"),
+                config_link=config_link,
+            )
+            reply_markup = get_connect_and_main_keyboard(
+                current_lang, i18n, settings, config_link
+            )
         else:
             await session.rollback()
             logging.info(
-                f"Promo code '{code_input}' application failed for user {user.id}. Reason: {response_text_from_service}"
+                f"Promo code '{code_input}' application failed for user {user.id}. Reason: {result}"
+            )
+            response_to_user_text = result
+            reply_markup = get_back_to_main_menu_markup(
+                current_lang, i18n
             )
 
-    await message.answer(response_to_user_text,
-                         reply_markup=get_back_to_main_menu_markup(
-                             current_lang, i18n),
-                         parse_mode="HTML")
+    await message.answer(
+        response_to_user_text,
+        reply_markup=reply_markup,
+        parse_mode="HTML",
+    )
     await state.clear()
     logging.info(
         f"Promo code input '{code_input}' processing finished for user {message.from_user.id}. State cleared."
