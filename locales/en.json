@@ -27,6 +27,7 @@
   "pay_with_yookassa_button": "💳 YooKassa",
   "pay_with_tribute_button": "❤️ Tribute",
   "pay_with_stars_button": "🌟 Telegram Stars",
+  "connect_button": "🔗 Connect",
   "cancel_button": "❌ Cancel",
   "payment_description_subscription": "Subscription payment for {months} mo.",
   "payment_service_unavailable": "Payment service temporarily unavailable. Please try again later.",
@@ -39,6 +40,7 @@
   "payment_successful_with_promo": "✅ Payment successful!\nYour {months}-month subscription (with promo bonus +{bonus_days} days) is active until {end_date}.",
   "payment_successful_with_referral_bonus": "✅ Payment successful!\nYour {months}-month subscription (base end date: {base_end_date}) has been extended by {bonus_days} bonus days for referral from {inviter_name} and is now active until {final_end_date}.",
   "payment_successful_error_details": "✅ Payment succeeded, but an error occurred displaying details. Your subscription is active. Contact support if anything is wrong.",
+  "payment_successful_full": "Thank you for your purchase!\n\nSubscription paid until: <b>{end_date}</b>\n\nConnection key:\n<code>{config_link}</code>\n\nTo connect, open the link and follow the instructions 👇",
   "payment_failed": "❌ Payment failed or was cancelled. Please try again or contact support.",
   "error_processing_your_payment": "An error occurred processing your payment after success. Please contact support with the details.",
 

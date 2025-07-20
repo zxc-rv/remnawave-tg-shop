@@ -21,6 +21,7 @@ from bot.services.yookassa_service import YooKassaService
 from bot.middlewares.i18n import JsonI18n
 from config.settings import Settings
 from bot.services.notification_service import notify_admin_new_payment
+from bot.keyboards.inline.user_keyboards import get_connect_and_main_keyboard
 
 payment_processing_lock = asyncio.Lock()
 
@@ -174,6 +175,30 @@ async def process_successful_payment(session: AsyncSession, bot: Bot,
         except Exception as e_notify:
             logging.error(
                 f"Failed to send final payment success message to user {user_id}: {e_notify}"
+            )
+
+        config_link = activation_details.get("subscription_url") or _(
+            "config_link_not_available"
+        )
+        details_message = _(
+            "payment_successful_full",
+            end_date=final_end_date_for_user.strftime("%d.%m.%Y %H:%M:%S"),
+            config_link=config_link,
+        )
+        details_markup = get_connect_and_main_keyboard(
+            user_lang, i18n, settings, config_link
+        )
+        try:
+            await bot.send_message(
+                user_id,
+                details_message,
+                reply_markup=details_markup,
+                parse_mode="HTML",
+                disable_web_page_preview=True,
+            )
+        except Exception as e_notify:
+            logging.error(
+                f"Failed to send payment details message to user {user_id}: {e_notify}"
             )
 
         await notify_admin_new_payment(
