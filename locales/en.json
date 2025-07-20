@@ -59,6 +59,7 @@
   "promo_code_already_used_by_user": "You have already used promo code <code>{code}</code>.",
   "promo_code_no_active_subscription": "You must have an active subscription to apply this promo code.",
   "promo_code_applied_success": "✅ Promo code <code>{code}</code> applied successfully!\nYour subscription is extended by {bonus_days} days and is now active until {new_end_date}.",
+  "promo_code_applied_success_full": "✅ Promo code applied successfully!\n\nSubscription active until: <b>{end_date}</b>\n\nConnection key:\n<code>{config_link}</code>\n\nTo connect, open the link and follow the instructions 👇",
   "error_applying_promo_bonus": "Failed to apply promo bonus. Please try again later or contact support.",
   "promo_input_cancelled_short": "Promo code entry cancelled.",
 

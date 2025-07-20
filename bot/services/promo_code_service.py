@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, Tuple, Dict
 from aiogram import Bot
@@ -23,9 +24,13 @@ class PromoCodeService:
         self.bot = bot
         self.i18n = i18n
 
-    async def apply_promo_code(self, session: AsyncSession, user_id: int,
-                               code_input: str,
-                               user_lang: str) -> Tuple[bool, str]:
+    async def apply_promo_code(
+        self,
+        session: AsyncSession,
+        user_id: int,
+        code_input: str,
+        user_lang: str,
+    ) -> Tuple[bool, datetime | str]:
         _ = lambda k, **kw: self.i18n.gettext(user_lang, k, **kw)
         code_input_upper = code_input.strip().upper()
 
@@ -65,10 +70,7 @@ class PromoCodeService:
                     code_input_upper,
                     bonus_days,
                 )
-                return True, _("promo_code_applied_success",
-                               code=code_input_upper,
-                               bonus_days=bonus_days,
-                               new_end_date=new_end_date.strftime('%Y-%m-%d'))
+                return True, new_end_date
             else:
 
                 logging.error(
