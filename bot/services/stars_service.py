@@ -11,6 +11,7 @@ from .subscription_service import SubscriptionService
 from .referral_service import ReferralService
 from bot.middlewares.i18n import JsonI18n
 from .notification_service import notify_admin_new_payment
+from bot.keyboards.inline.user_keyboards import get_connect_and_main_keyboard
 
 
 class StarsService:
@@ -108,6 +109,10 @@ class StarsService:
         i18n: JsonI18n = i18n_data.get("i18n_instance")
         _ = lambda k, **kw: i18n.gettext(current_lang, k, **kw) if i18n else k
 
+        config_link = activation_details.get("subscription_url") or _(
+            "config_link_not_available"
+        )
+
         if applied_days:
             inviter_name_display = _("friend_placeholder")
             db_user = await user_dal.get_user_by_id(session, message.from_user.id)
@@ -118,18 +123,32 @@ class StarsService:
                 elif inviter and inviter.username:
                     inviter_name_display = f"@{inviter.username}"
             success_msg = _(
-                "payment_successful_with_referral_bonus",
+                "payment_successful_with_referral_bonus_full",
                 months=months,
                 base_end_date=activation_details["end_date"].strftime('%Y-%m-%d'),
                 bonus_days=applied_days,
                 final_end_date=final_end.strftime('%Y-%m-%d'),
                 inviter_name=inviter_name_display,
+                config_link=config_link,
             )
         else:
-            success_msg = _("payment_successful", months=months,
-                            end_date=final_end.strftime('%Y-%m-%d'))
+            success_msg = _(
+                "payment_successful_full",
+                months=months,
+                end_date=final_end.strftime('%Y-%m-%d'),
+                config_link=config_link,
+            )
+        markup = get_connect_and_main_keyboard(
+            current_lang, i18n, self.settings, config_link
+        )
         try:
-            await self.bot.send_message(message.from_user.id, success_msg)
+            await self.bot.send_message(
+                message.from_user.id,
+                success_msg,
+                reply_markup=markup,
+                parse_mode="HTML",
+                disable_web_page_preview=True,
+            )
         except Exception as e_send:
             logging.error(
                 f"Failed to send stars payment success message: {e_send}")

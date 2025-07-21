@@ -14,6 +14,7 @@ from bot.services.subscription_service import SubscriptionService
 from bot.services.panel_api_service import PanelApiService
 from bot.services.referral_service import ReferralService
 from .notification_service import notify_admin_new_payment
+from bot.keyboards.inline.user_keyboards import get_connect_and_main_keyboard
 from db.dal import payment_dal, user_dal, subscription_dal
 
 
@@ -137,6 +138,10 @@ class TributeService:
                     final_end = activation_details.get('end_date')
 
                 if final_end:
+                    config_link = activation_details.get("subscription_url") or _(
+                        "config_link_not_available"
+                    )
+
                     if applied_ref_days:
                         inviter_name_display = _('friend_placeholder')
                         if db_user and db_user.referred_by_id:
@@ -146,19 +151,33 @@ class TributeService:
                             elif inviter and inviter.username:
                                 inviter_name_display = f"@{inviter.username}"
                         success_msg = _(
-                            "payment_successful_with_referral_bonus",
+                            "payment_successful_with_referral_bonus_full",
                             months=months,
                             base_end_date=activation_details["end_date"].strftime('%Y-%m-%d'),
                             bonus_days=applied_ref_days,
                             final_end_date=final_end.strftime('%Y-%m-%d'),
-                            inviter_name=inviter_name_display)
+                            inviter_name=inviter_name_display,
+                            config_link=config_link,
+                        )
                     else:
                         success_msg = _(
-                            "payment_successful", months=months,
-                            end_date=final_end.strftime('%Y-%m-%d'))
+                            "payment_successful_full",
+                            months=months,
+                            end_date=final_end.strftime('%Y-%m-%d'),
+                            config_link=config_link,
+                        )
+                    markup = get_connect_and_main_keyboard(
+                        lang, i18n, settings, config_link
+                    )
 
                     try:
-                        await bot.send_message(user_id, success_msg)
+                        await bot.send_message(
+                            user_id,
+                            success_msg,
+                            reply_markup=markup,
+                            parse_mode="HTML",
+                            disable_web_page_preview=True,
+                        )
                     except Exception as e:
                         logging.error(
                             f"Failed to send Tribute payment success message to user {user_id}: {e}")
