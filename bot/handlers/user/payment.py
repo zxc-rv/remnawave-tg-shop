@@ -135,7 +135,10 @@ async def process_successful_payment(session: AsyncSession, bot: Bot,
         user_lang = db_user.language_code if db_user and db_user.language_code else settings.DEFAULT_LANGUAGE
         _ = lambda key, **kwargs: i18n.gettext(user_lang, key, **kwargs)
 
-        success_message = ""
+        config_link = activation_details.get("subscription_url") or _(
+            "config_link_not_available"
+        )
+
         if applied_referee_bonus_days_from_referral and final_end_date_for_user:
             inviter_name_display = _("friend_placeholder")
             if db_user and db_user.referred_by_id:
@@ -146,42 +149,36 @@ async def process_successful_payment(session: AsyncSession, bot: Bot,
                 elif inviter and inviter.username:
                     inviter_name_display = f"@{inviter.username}"
 
-            success_message = _(
-                "payment_successful_with_referral_bonus",
+            details_message = _(
+                "payment_successful_with_referral_bonus_full",
                 months=subscription_months,
                 base_end_date=base_subscription_end_date.strftime('%Y-%m-%d'),
                 bonus_days=applied_referee_bonus_days_from_referral,
                 final_end_date=final_end_date_for_user.strftime('%Y-%m-%d'),
-                inviter_name=inviter_name_display)
+                inviter_name=inviter_name_display,
+                config_link=config_link,
+            )
         elif applied_promo_bonus_days > 0 and final_end_date_for_user:
-            success_message = _(
-                "payment_successful_with_promo",
+            details_message = _(
+                "payment_successful_with_promo_full",
                 months=subscription_months,
                 bonus_days=applied_promo_bonus_days,
-                end_date=final_end_date_for_user.strftime('%Y-%m-%d'))
+                end_date=final_end_date_for_user.strftime('%Y-%m-%d'),
+                config_link=config_link,
+            )
         elif final_end_date_for_user:
-            success_message = _(
-                "payment_successful",
+            details_message = _(
+                "payment_successful_full",
                 months=subscription_months,
-                end_date=final_end_date_for_user.strftime('%Y-%m-%d'))
+                end_date=final_end_date_for_user.strftime('%Y-%m-%d'),
+                config_link=config_link,
+            )
         else:
             logging.error(
                 f"Critical error: final_end_date_for_user is None for user {user_id} after successful payment logic."
             )
-            success_message = _("payment_successful_error_details")
+            details_message = _("payment_successful_error_details")
 
-        config_link = activation_details.get("subscription_url") or _(
-            "config_link_not_available"
-        )
-        details_message = (
-            success_message
-            + "\n\n"
-            + _(
-                "payment_successful_full",
-                end_date=final_end_date_for_user.strftime("%d.%m.%Y %H:%M:%S"),
-                config_link=config_link,
-            )
-        )
         details_markup = get_connect_and_main_keyboard(
             user_lang, i18n, settings, config_link
         )
