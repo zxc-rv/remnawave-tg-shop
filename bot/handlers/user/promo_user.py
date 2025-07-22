@@ -69,6 +69,7 @@ async def prompt_promo_code_input(callback: types.CallbackQuery,
 async def process_promo_code_input(message: types.Message, state: FSMContext,
                                    settings: Settings, i18n_data: dict,
                                    promo_code_service: PromoCodeService,
+                                   subscription_service: SubscriptionService,
                                    bot: Bot, session: AsyncSession):
     logging.info(
         f"Processing promo code input from user {message.from_user.id} in state {await state.get_state()}: '{message.text}'"
