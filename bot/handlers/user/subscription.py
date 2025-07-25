@@ -13,6 +13,7 @@ from bot.keyboards.inline.user_keyboards import (
     get_payment_url_keyboard, get_back_to_main_menu_markup)
 from bot.services.yookassa_service import YooKassaService
 from bot.services.stars_service import StarsService
+from bot.services.crypto_pay_service import CryptoPayService
 from bot.services.subscription_service import SubscriptionService
 from bot.services.panel_api_service import PanelApiService
 from bot.services.referral_service import ReferralService
@@ -290,6 +291,49 @@ async def pay_yk_callback_handler(
         )
         await callback.message.edit_text(get_text("error_payment_gateway"))
 
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("pay_crypto:"))
+async def pay_crypto_callback_handler(
+        callback: types.CallbackQuery, settings: Settings, i18n_data: dict,
+        cryptopay_service: CryptoPayService, session: AsyncSession):
+    current_lang = i18n_data.get("current_language", settings.DEFAULT_LANGUAGE)
+    i18n: Optional[JsonI18n] = i18n_data.get("i18n_instance")
+    get_text = lambda key, **kwargs: i18n.gettext(current_lang, key, **kwargs) if i18n else key
+
+    if not i18n or not callback.message:
+        await callback.answer(get_text("error_occurred_try_again"), show_alert=True)
+        return
+
+    if not cryptopay_service or not cryptopay_service.configured:
+        await callback.message.edit_text(get_text("payment_service_unavailable"))
+        await callback.answer(get_text("payment_service_unavailable_alert"), show_alert=True)
+        return
+
+    try:
+        _, data_payload = callback.data.split(":", 1)
+        months_str, amount_str = data_payload.split(":")
+        months = int(months_str)
+        amount_val = float(amount_str)
+    except (ValueError, IndexError):
+        logging.error(f"Invalid pay_crypto data in callback: {callback.data}")
+        await callback.answer(get_text("error_try_again"), show_alert=True)
+        return
+
+    user_id = callback.from_user.id
+    description = get_text("payment_description_subscription", months=months)
+
+    invoice_url = await cryptopay_service.create_invoice(
+        session, user_id, months, amount_val, description)
+    if invoice_url:
+        await callback.message.edit_text(
+            get_text("payment_link_message", months=months),
+            reply_markup=get_payment_url_keyboard(invoice_url, current_lang, i18n),
+            disable_web_page_preview=False,
+        )
+    else:
+        await callback.message.edit_text(get_text("error_payment_gateway"))
     await callback.answer()
 
 

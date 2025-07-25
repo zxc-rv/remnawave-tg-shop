@@ -134,6 +134,9 @@ def get_payment_method_keyboard(months: int, price: float,
     if settings.YOOKASSA_ENABLED:
         builder.button(text=_("pay_with_yookassa_button"),
                        callback_data=f"pay_yk:{months}:{price}")
+    if settings.CRYPTOPAY_ENABLED:
+        builder.button(text=_("pay_with_cryptopay_button"),
+                       callback_data=f"pay_crypto:{months}:{price}")
     builder.button(text=_(key="cancel_button"),
                    callback_data="main_action:subscribe")
     builder.adjust(1)

@@ -26,7 +26,6 @@ class Settings(BaseSettings):
 
     YOOKASSA_SHOP_ID: Optional[str] = None
     YOOKASSA_SECRET_KEY: Optional[str] = None
-    YOOKASSA_WEBHOOK_BASE_URL: Optional[str] = None
     YOOKASSA_RETURN_URL: Optional[str] = None
 
     YOOKASSA_DEFAULT_RECEIPT_EMAIL: Optional[str] = Field(default=None)
@@ -34,7 +33,12 @@ class Settings(BaseSettings):
     YOOKASSA_PAYMENT_MODE: str = Field(default="full_prepayment")
     YOOKASSA_PAYMENT_SUBJECT: str = Field(default="service")
 
-    TELEGRAM_WEBHOOK_BASE_URL: Optional[str] = None
+    WEBHOOK_BASE_URL: Optional[str] = None
+
+    CRYPTOPAY_TOKEN: Optional[str] = None
+    CRYPTOPAY_NETWORK: str = Field(default="mainnet")
+    CRYPTOPAY_ASSET: str = Field(default="TON")
+    CRYPTOPAY_ENABLED: bool = Field(default=True)
 
     YOOKASSA_ENABLED: bool = Field(default=True)
     STARS_ENABLED: bool = Field(default=True)
@@ -169,9 +173,9 @@ class Settings(BaseSettings):
     @computed_field
     @property
     def yookassa_full_webhook_url(self) -> Optional[str]:
-        if self.YOOKASSA_WEBHOOK_BASE_URL:
-
-            return f"{self.YOOKASSA_WEBHOOK_BASE_URL.rstrip('/')}{self.yookassa_webhook_path}"
+        base = self.WEBHOOK_BASE_URL
+        if base:
+            return f"{base.rstrip('/')}{self.yookassa_webhook_path}"
         return None
 
     @computed_field
@@ -182,8 +186,9 @@ class Settings(BaseSettings):
     @computed_field
     @property
     def tribute_full_webhook_url(self) -> Optional[str]:
-        if self.YOOKASSA_WEBHOOK_BASE_URL:
-            return f"{self.YOOKASSA_WEBHOOK_BASE_URL.rstrip('/')}{self.tribute_webhook_path}"
+        base = self.WEBHOOK_BASE_URL
+        if base:
+            return f"{base.rstrip('/')}{self.tribute_webhook_path}"
         return None
 
     @computed_field
@@ -194,8 +199,22 @@ class Settings(BaseSettings):
     @computed_field
     @property
     def panel_full_webhook_url(self) -> Optional[str]:
-        if self.YOOKASSA_WEBHOOK_BASE_URL:
-            return f"{self.YOOKASSA_WEBHOOK_BASE_URL.rstrip('/')}{self.panel_webhook_path}"
+        base = self.WEBHOOK_BASE_URL
+        if base:
+            return f"{base.rstrip('/')}{self.panel_webhook_path}"
+        return None
+
+    @computed_field
+    @property
+    def cryptopay_webhook_path(self) -> str:
+        return "/webhook/cryptopay"
+
+    @computed_field
+    @property
+    def cryptopay_full_webhook_url(self) -> Optional[str]:
+        base = self.WEBHOOK_BASE_URL
+        if base:
+            return f"{base.rstrip('/')}{self.cryptopay_webhook_path}"
         return None
 
     @computed_field

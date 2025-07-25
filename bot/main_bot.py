@@ -38,6 +38,7 @@ from bot.services.referral_service import ReferralService
 from bot.services.promo_code_service import PromoCodeService
 from bot.services.stars_service import StarsService
 from bot.services.tribute_service import TributeService, tribute_webhook_route
+from bot.services.crypto_pay_service import CryptoPayService, cryptopay_webhook_route
 
 from bot.handlers.user import payment as user_payment_webhook_module
 
@@ -101,7 +102,7 @@ async def on_startup_configured(dispatcher: Dispatcher):
     logging.info("STARTUP: on_startup_configured executing...")
 
 
-    telegram_webhook_url_to_set = getattr(settings, "TELEGRAM_WEBHOOK_BASE_URL", None)
+    telegram_webhook_url_to_set = settings.WEBHOOK_BASE_URL
     if telegram_webhook_url_to_set:
         full_telegram_webhook_url = (
             f"{str(telegram_webhook_url_to_set).rstrip('/')}/{settings.BOT_TOKEN}"
@@ -152,7 +153,7 @@ async def on_startup_configured(dispatcher: Dispatcher):
             )
     else:
         logging.info(
-            "STARTUP: TELEGRAM_WEBHOOK_BASE_URL not set in environment. Attempting to delete any existing webhook (running in polling mode)."
+            "STARTUP: WEBHOOK_BASE_URL not set in environment. Running in polling mode and clearing any existing webhook."
         )
         await bot.delete_webhook(drop_pending_updates=True)
 
@@ -265,6 +266,16 @@ async def run_bot(settings_param: Settings):
     stars_service = StarsService(
         bot, settings_param, i18n_instance, subscription_service, referral_service
     )
+    cryptopay_service = CryptoPayService(
+        settings_param.CRYPTOPAY_TOKEN,
+        settings_param.CRYPTOPAY_NETWORK,
+        bot,
+        settings_param,
+        i18n_instance,
+        local_async_session_factory,
+        subscription_service,
+        referral_service,
+    )
     tribute_service = TributeService(
         bot,
         settings_param,
@@ -288,6 +299,7 @@ async def run_bot(settings_param: Settings):
     dp["referral_service"] = referral_service
     dp["promo_code_service"] = promo_code_service
     dp["stars_service"] = stars_service
+    dp["cryptopay_service"] = cryptopay_service
     dp["tribute_service"] = tribute_service
     dp["panel_webhook_service"] = panel_webhook_service
     dp["async_session_factory"] = local_async_session_factory
@@ -306,8 +318,8 @@ async def run_bot(settings_param: Settings):
 
     await register_all_routers(dp, settings_param)
 
-    tg_webhook_base = getattr(settings_param, "TELEGRAM_WEBHOOK_BASE_URL", None)
-    yk_webhook_base = getattr(settings_param, "YOOKASSA_WEBHOOK_BASE_URL", None)
+    tg_webhook_base = settings_param.WEBHOOK_BASE_URL
+    yk_webhook_base = settings_param.WEBHOOK_BASE_URL
 
     should_run_aiohttp_server = bool(tg_webhook_base) or (
         bool(yk_webhook_base) and bool(settings_param.yookassa_webhook_path)
@@ -318,10 +330,10 @@ async def run_bot(settings_param: Settings):
 
     logging.info(f"--- Bot Run Mode Decision ---")
     logging.info(
-        f"Configured TELEGRAM_WEBHOOK_BASE_URL: '{tg_webhook_base}' -> Telegram Webhook Mode: {telegram_uses_webhook_mode}"
+        f"Configured WEBHOOK_BASE_URL: '{tg_webhook_base}' -> Telegram Webhook Mode: {telegram_uses_webhook_mode}"
     )
     logging.info(
-        f"Configured YOOKASSA_WEBHOOK_BASE_URL: '{yk_webhook_base}' & Path: '{settings_param.yookassa_webhook_path}'"
+        f"YooKassa webhook path: '{settings_param.yookassa_webhook_path}'"
     )
     logging.info(f"Decision: Run AIOHTTP server: {should_run_aiohttp_server}")
     logging.info(f"Decision: Run Telegram Polling: {run_telegram_polling}")
@@ -343,6 +355,7 @@ async def run_bot(settings_param: Settings):
         app["referral_service"] = referral_service
         app["panel_service"] = panel_service
         app["stars_service"] = stars_service
+        app["cryptopay_service"] = cryptopay_service
         app["tribute_service"] = tribute_service
         app["panel_webhook_service"] = panel_webhook_service
 
@@ -379,6 +392,11 @@ async def run_bot(settings_param: Settings):
         if tribute_path.startswith("/"):
             app.router.add_post(tribute_path, tribute_webhook_route)
             logging.info(f"Tribute webhook route configured at: [POST] {tribute_path}")
+
+        cp_path = settings_param.cryptopay_webhook_path
+        if cp_path.startswith("/"):
+            app.router.add_post(cp_path, cryptopay_webhook_route)
+            logging.info(f"CryptoPay webhook route configured at: [POST] {cp_path}")
 
         panel_path = settings_param.panel_webhook_path
         if panel_path.startswith("/"):
