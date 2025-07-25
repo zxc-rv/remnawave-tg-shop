@@ -15,6 +15,7 @@ This Telegram bot is designed to automate the sale and management of subscriptio
 * **Subscription Management:**
     * Handles subscription purchases for various periods (1, 3, 6, 12 months).
     * Integrates with **YooKassa** for payment processing, including fiscal receipt data.
+    * Supports **Crypto Pay** for cryptocurrency payments.
     * Automatic subscription activation/extension upon successful payment.
     * Link and syncs users with a **Remnawave panel** account, primarily matching by Telegram ID.
     * Updates user status, expiration dates, traffic limits, and inbounds on the Remnawave panel.
@@ -88,14 +89,14 @@ This Telegram bot is designed to automate the sale and management of subscriptio
     * **YooKassa Settings:**
         * `YOOKASSA_SHOP_ID`: Your shop ID from YooKassa.
         * `YOOKASSA_SECRET_KEY`: Your secret key from YooKassa.
-        * `YOOKASSA_WEBHOOK_BASE_URL`: Your publicly accessible HTTPS base URL where the bot will listen for YooKassa webhooks (e.g., `https://your.domain.com`). The full path will be `{YOOKASSA_WEBHOOK_BASE_URL}/webhook/yookassa`.
+        * `WEBHOOK_BASE_URL`: Base URL for all webhooks (Telegram, YooKassa, Crypto Pay). Example: `https://webhooks.yourdomain.com`.
         * `YOOKASSA_RETURN_URL`: (Optional) URL user is redirected to after payment, often `https://t.me/your_bot_username`.
         * `YOOKASSA_DEFAULT_RECEIPT_EMAIL`: **Important for 54-FZ (Russian fiscalization).** A default email for sending fiscal receipts.
         * `YOOKASSA_VAT_CODE`: VAT code for items in receipt (e.g., `1` for "No VAT". Consult YooKassa documentation and tax advisor).
         * `YOOKASSA_PAYMENT_MODE`: e.g., `full_prepayment`.
         * `YOOKASSA_PAYMENT_SUBJECT`: e.g., `service`.
-    * `TELEGRAM_WEBHOOK_BASE_URL`: (Optional) If you want Telegram updates via webhook. Can be the same as `YOOKASSA_WEBHOOK_BASE_URL`. If not set, the bot will use polling for Telegram updates.
-    * **Payment Method Toggles:** `YOOKASSA_ENABLED`, `STARS_ENABLED`, `TRIBUTE_ENABLED`.
+    * **Crypto Pay Settings:** `CRYPTOPAY_TOKEN`, `CRYPTOPAY_NETWORK` (`mainnet` or `testnet`), `CRYPTOPAY_ASSET` (e.g., `TON`). Enable with `CRYPTOPAY_ENABLED`.
+    * **Payment Method Toggles:** `YOOKASSA_ENABLED`, `STARS_ENABLED`, `TRIBUTE_ENABLED`, `CRYPTOPAY_ENABLED`.
     * **Subscription Options:** For each duration you can use variables like
       `1_MONTH_ENABLED`, `RUB_PRICE_1_MONTH`, `STARS_PRICE_1_MONTH`, `TRIBUTE_LINK_1_MONTH`
       (and corresponding variables for `3_MONTHS`, `6_MONTHS`, `12_MONTHS`).
@@ -120,9 +121,11 @@ This Telegram bot is designed to automate the sale and management of subscriptio
 
 5.  **Webhook Setup (Important if using webhooks):**
     * **Reverse Proxy (Nginx, Caddy, etc.):** You need a reverse proxy to handle incoming HTTPS traffic, manage SSL certificates (e.g., from Let's Encrypt), and forward requests to your bot's container.
-        * Forward requests for `https://{YOOKASSA_WEBHOOK_BASE_URL_domain}/webhook/yookassa` to `http://remnawave-tg-shop:{WEB_SERVER_PORT}/webhook/yookassa` (where `remnawave-tg-shop` is the service name in `docker-compose.yml`).
-        * If using Telegram webhooks, forward requests for `https://{TELEGRAM_WEBHOOK_BASE_URL_domain}/<YOUR_BOT_TOKEN>` to `http://remnawave-tg-shop:{WEB_SERVER_PORT}/<YOUR_BOT_TOKEN>`.
-    * **Telegram Webhook Registration:** The bot attempts to set its Telegram webhook URL on startup if `TELEGRAM_WEBHOOK_BASE_URL` is configured in `.env`. Check the bot logs to confirm if this was successful. You can also manually check using the Telegram Bot API method `getWebhookInfo`.
+        * Forward requests for `https://{WEBHOOK_BASE_URL_domain}/webhook/yookassa` to `http://remnawave-tg-shop:{WEB_SERVER_PORT}/webhook/yookassa` (where `remnawave-tg-shop` is the service name in `docker-compose.yml`).
+        * Forward requests for `https://{WEBHOOK_BASE_URL_domain}/webhook/cryptopay` to `http://remnawave-tg-shop:{WEB_SERVER_PORT}/webhook/cryptopay`.
+        * Forward requests for `https://{WEBHOOK_BASE_URL_domain}/webhook/tribute` to `http://remnawave-tg-shop:{WEB_SERVER_PORT}/webhook/tribute`.
+        * If using Telegram webhooks, forward requests for `https://{WEBHOOK_BASE_URL_domain}/<YOUR_BOT_TOKEN>` to `http://remnawave-tg-shop:{WEB_SERVER_PORT}/<YOUR_BOT_TOKEN>`.
+    * **Telegram Webhook Registration:** The bot attempts to set its Telegram webhook URL on startup if `WEBHOOK_BASE_URL` is configured in `.env`. Check the bot logs to confirm if this was successful. You can also manually check using the Telegram Bot API method `getWebhookInfo`.
 
 6.  **Database:**
     * A PostgreSQL database will be created in the docker container. The schema is initialized automatically on the first run if the database doesn't exist.
