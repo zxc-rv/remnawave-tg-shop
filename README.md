@@ -15,7 +15,7 @@ This Telegram bot is designed to automate the sale and management of subscriptio
 * **Subscription Management:**
     * Handles subscription purchases for various periods (1, 3, 6, 12 months).
     * Integrates with **YooKassa** for payment processing, including fiscal receipt data.
-    * Supports **Crypto Pay** for cryptocurrency payments.
+    * Supports **Crypto Pay** for payments with fiat currency (RUB by default).
     * Automatic subscription activation/extension upon successful payment.
     * Link and syncs users with a **Remnawave panel** account, primarily matching by Telegram ID.
     * Updates user status, expiration dates, traffic limits, and inbounds on the Remnawave panel.
@@ -95,7 +95,7 @@ This Telegram bot is designed to automate the sale and management of subscriptio
         * `YOOKASSA_VAT_CODE`: VAT code for items in receipt (e.g., `1` for "No VAT". Consult YooKassa documentation and tax advisor).
         * `YOOKASSA_PAYMENT_MODE`: e.g., `full_prepayment`.
         * `YOOKASSA_PAYMENT_SUBJECT`: e.g., `service`.
-    * **Crypto Pay Settings:** `CRYPTOPAY_TOKEN`, `CRYPTOPAY_NETWORK` (`mainnet` or `testnet`), `CRYPTOPAY_ASSET` (e.g., `TON`). Enable with `CRYPTOPAY_ENABLED`.
+* **Crypto Pay Settings:** `CRYPTOPAY_TOKEN`, `CRYPTOPAY_NETWORK` (`mainnet` or `testnet`), `CRYPTOPAY_CURRENCY_TYPE` (`fiat` or `crypto`), `CRYPTOPAY_ASSET` (e.g., `RUB`). Enable with `CRYPTOPAY_ENABLED`.
     * **Payment Method Toggles:** `YOOKASSA_ENABLED`, `STARS_ENABLED`, `TRIBUTE_ENABLED`, `CRYPTOPAY_ENABLED`.
     * **Subscription Options:** For each duration you can use variables like
       `1_MONTH_ENABLED`, `RUB_PRICE_1_MONTH`, `STARS_PRICE_1_MONTH`, `TRIBUTE_LINK_1_MONTH`

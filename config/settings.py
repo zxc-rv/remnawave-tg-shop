@@ -37,7 +37,8 @@ class Settings(BaseSettings):
 
     CRYPTOPAY_TOKEN: Optional[str] = None
     CRYPTOPAY_NETWORK: str = Field(default="mainnet")
-    CRYPTOPAY_ASSET: str = Field(default="TON")
+    CRYPTOPAY_CURRENCY_TYPE: str = Field(default="fiat")
+    CRYPTOPAY_ASSET: str = Field(default="RUB")
     CRYPTOPAY_ENABLED: bool = Field(default=True)
 
     YOOKASSA_ENABLED: bool = Field(default=True)

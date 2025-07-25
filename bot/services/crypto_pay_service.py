@@ -78,7 +78,9 @@ class CryptoPayService:
         try:
             invoice = await self.client.create_invoice(
                 amount=amount,
-                asset=self.settings.CRYPTOPAY_ASSET,
+                currency_type=self.settings.CRYPTOPAY_CURRENCY_TYPE,
+                fiat=self.settings.CRYPTOPAY_ASSET if self.settings.CRYPTOPAY_CURRENCY_TYPE == "fiat" else None,
+                asset=self.settings.CRYPTOPAY_ASSET if self.settings.CRYPTOPAY_CURRENCY_TYPE == "crypto" else None,
                 description=description,
                 payload=payload,
             )
