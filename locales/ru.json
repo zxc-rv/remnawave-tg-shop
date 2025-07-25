@@ -25,6 +25,7 @@
   "choose_payment_method": "Выберите способ оплаты:",
   "pay_button": "💳 Оплатить",
   "pay_with_yookassa_button": "💳 ЮKassa",
+  "pay_with_cryptopay_button": "💎 CryptoBot",
   "pay_with_tribute_button": "❤️ Tribute",
   "pay_with_stars_button": "🌟 Звезды Telegram",
   "connect_button": "🔗 Подключиться",
