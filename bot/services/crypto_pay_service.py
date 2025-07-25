@@ -6,7 +6,8 @@ from aiogram import Bot
 from aiohttp import web
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
-from aiocryptopay import AioCryptoPay, Networks, Update
+from aiocryptopay import AioCryptoPay, Networks
+from aiocryptopay.models.update import Update
 
 from config.settings import Settings
 from bot.middlewares.i18n import JsonI18n
