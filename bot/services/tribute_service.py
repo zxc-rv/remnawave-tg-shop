@@ -74,6 +74,11 @@ class TributeService:
         except Exception:
             return web.Response(status=400, text="bad_request")
 
+        logging.info(
+            "Tribute webhook data: %s",
+            json.dumps(payload, ensure_ascii=False),
+        )
+
         event_name = payload.get('name')
         data = payload.get('payload', {})
         user_id = data.get('telegram_user_id')
