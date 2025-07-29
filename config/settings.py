@@ -95,10 +95,10 @@ class Settings(BaseSettings):
     PANEL_API_KEY: Optional[str] = None
     USER_TRAFFIC_LIMIT_GB: Optional[float] = Field(default=0.0)
     USER_TRAFFIC_STRATEGY: str = Field(default="NO_RESET")
-    USER_INBOUND_UUIDS: Optional[str] = Field(
+    USER_SQUAD_UUIDS: Optional[str] = Field(
         default=None,
         description=
-        "Comma-separated UUIDs of inbounds to activate for new panel users")
+        "Comma-separated UUIDs of internal squads to assign to new panel users")
 
     TRIAL_ENABLED: bool = Field(default=True)
     TRIAL_DURATION_DAYS: int = Field(default=3)
@@ -156,11 +156,11 @@ class Settings(BaseSettings):
 
     @computed_field
     @property
-    def parsed_user_inbound_uuids(self) -> Optional[List[str]]:
-        if self.USER_INBOUND_UUIDS:
+    def parsed_user_squad_uuids(self) -> Optional[List[str]]:
+        if self.USER_SQUAD_UUIDS:
             return [
                 uuid.strip()
-                for uuid in self.USER_INBOUND_UUIDS.split(',')
+                for uuid in self.USER_SQUAD_UUIDS.split(',')
                 if uuid.strip()
             ]
         return None
