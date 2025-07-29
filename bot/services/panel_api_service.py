@@ -329,8 +329,7 @@ class PanelApiService:
             default_expire_days: int = 1,
             default_traffic_limit_bytes: int = 0,
             default_traffic_limit_strategy: str = "NO_RESET",
-            specific_inbound_uuids: Optional[List[str]] = None,
-            activate_all_inbounds_default_flag: bool = True,
+            specific_squad_uuids: Optional[List[str]] = None,
             description: Optional[str] = None,
             tag: Optional[str] = None,
             status: str = "ACTIVE",
@@ -361,11 +360,8 @@ class PanelApiService:
             "trafficLimitStrategy": default_traffic_limit_strategy.upper(),
             "trafficLimitBytes": default_traffic_limit_bytes,
         }
-        if specific_inbound_uuids:
-            payload["activeUserInbounds"] = specific_inbound_uuids
-            payload["activateAllInbounds"] = False
-        else:
-            payload["activateAllInbounds"] = activate_all_inbounds_default_flag
+        if specific_squad_uuids:
+            payload["activeInternalSquads"] = specific_squad_uuids
         if telegram_id is not None: payload["telegramId"] = telegram_id
         if email: payload["email"] = email
         if description: payload["description"] = description

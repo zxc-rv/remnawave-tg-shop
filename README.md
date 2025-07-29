@@ -18,7 +18,7 @@ This Telegram bot is designed to automate the sale and management of subscriptio
     * Supports **Crypto Pay** for payments with fiat currency (RUB by default).
     * Automatic subscription activation/extension upon successful payment.
     * Link and syncs users with a **Remnawave panel** account, primarily matching by Telegram ID.
-    * Updates user status, expiration dates, traffic limits, and inbounds on the Remnawave panel.
+    * Updates user status, expiration dates, traffic limits, and internal squads on the Remnawave panel.
 * **Admin Panel:**
     * Protected by `ADMIN_IDS` (supports multiple administrators).
     * **Statistics:** View bot usage (total users, banned, active subscriptions), recent payments, and panel sync status.
@@ -104,7 +104,7 @@ This Telegram bot is designed to automate the sale and management of subscriptio
         * `PANEL_API_URL`: Full URL to your Remnawave panel's API (e.g., `http://remnawave:3000/api` or `https://panel.yourdomain.com/api`).
         * `PANEL_API_KEY`: API Key for authenticating with the Remnawave panel.
         * `PANEL_WEBHOOK_SECRET`: Secret key for verifying webhooks from the Remnawave panel.
-    * `USER_INBOUND_UUIDS`: (Optional) Comma-separated list of inbound UUIDs from your panel to assign to users. If empty, `activateAllInbounds: true` (panel default) is used for new users.
+    * `USER_SQUAD_UUIDS`: (Optional) Comma-separated list of internal squad UUIDs from your panel to assign to users during creation.
     * `USER_TRAFFIC_LIMIT_GB` and `USER_TRAFFIC_STRATEGY`: Default traffic limit in gigabytes (0 for unlimited) and the reset strategy applied when updating users on the panel.
     * `TRIAL_ENABLED`, `TRIAL_DURATION_DAYS`, `TRIAL_TRAFFIC_LIMIT_GB`: Settings for the trial period.
     * `WEB_SERVER_HOST`, `WEB_SERVER_PORT`: Host and port for the bot's internal webhook server.

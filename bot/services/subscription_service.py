@@ -105,7 +105,7 @@ class SubscriptionService:
                     creation_response = await self.panel_service.create_panel_user(
                         username_on_panel=panel_username_on_panel_standard,
                         telegram_id=user_id,
-                        specific_inbound_uuids=self.settings.parsed_user_inbound_uuids,
+                        specific_squad_uuids=self.settings.parsed_user_squad_uuids,
                         default_traffic_limit_bytes=self.settings.user_traffic_limit_bytes,
                         default_traffic_limit_strategy=self.settings.USER_TRAFFIC_STRATEGY,
                     )
@@ -128,7 +128,7 @@ class SubscriptionService:
                 creation_response = await self.panel_service.create_panel_user(
                     username_on_panel=panel_username_on_panel_standard,
                     telegram_id=user_id,
-                    specific_inbound_uuids=self.settings.parsed_user_inbound_uuids,
+                    specific_squad_uuids=self.settings.parsed_user_squad_uuids,
                     default_traffic_limit_bytes=self.settings.user_traffic_limit_bytes,
                     default_traffic_limit_strategy=self.settings.USER_TRAFFIC_STRATEGY,
                 )
@@ -357,12 +357,10 @@ class SubscriptionService:
             "trafficLimitBytes": self.settings.trial_traffic_limit_bytes,
             "trafficLimitStrategy": self.settings.USER_TRAFFIC_STRATEGY,
         }
-        if self.settings.parsed_user_inbound_uuids:
-            panel_update_payload["activeUserInbounds"] = (
-                self.settings.parsed_user_inbound_uuids
+        if self.settings.parsed_user_squad_uuids:
+            panel_update_payload["activeInternalSquads"] = (
+                self.settings.parsed_user_squad_uuids
             )
-        elif panel_user_created_now:
-            panel_update_payload["activateAllInbounds"] = True
 
         updated_panel_user = await self.panel_service.update_user_details_on_panel(
             panel_user_uuid, panel_update_payload
@@ -506,12 +504,10 @@ class SubscriptionService:
             "trafficLimitBytes": self.settings.user_traffic_limit_bytes,
             "trafficLimitStrategy": self.settings.USER_TRAFFIC_STRATEGY,
         }
-        if self.settings.parsed_user_inbound_uuids:
-            panel_update_payload["activeUserInbounds"] = (
-                self.settings.parsed_user_inbound_uuids
+        if self.settings.parsed_user_squad_uuids:
+            panel_update_payload["activeInternalSquads"] = (
+                self.settings.parsed_user_squad_uuids
             )
-        elif panel_user_created_now:
-            panel_update_payload["activateAllInbounds"] = True
 
         updated_panel_user = await self.panel_service.update_user_details_on_panel(
             panel_user_uuid, panel_update_payload
