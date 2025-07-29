@@ -193,11 +193,38 @@ async def on_startup_configured(dispatcher: Dispatcher):
 async def on_shutdown_configured(dispatcher: Dispatcher):
     logging.warning("SHUTDOWN: on_shutdown_configured executing...")
 
+    async def close_service(key: str) -> None:
+        service = dispatcher.get(key)
+        if not service:
+            return
+        close_coro = getattr(service, "close", None)
+        if callable(close_coro):
+            try:
+                await close_coro()
+                logging.info(f"{key} closed on shutdown.")
+            except Exception as e:
+                logging.warning(f"Failed to close {key}: {e}")
+        else:
+            close_session = getattr(service, "close_session", None)
+            if callable(close_session):
+                try:
+                    await close_session()
+                    logging.info(f"{key} session closed on shutdown.")
+                except Exception as e:
+                    logging.warning(f"Failed to close session for {key}: {e}")
 
-    panel_service: Optional[PanelApiService] = dispatcher.get("panel_service")
-    if panel_service and hasattr(panel_service, "close_session"):
-        await panel_service.close_session()
-        logging.info("Panel API service session closed on shutdown.")
+    for service_key in (
+        "panel_service",
+        "cryptopay_service",
+        "tribute_service",
+        "panel_webhook_service",
+        "yookassa_service",
+        "promo_code_service",
+        "stars_service",
+        "subscription_service",
+        "referral_service",
+    ):
+        await close_service(service_key)
 
     bot: Bot = dispatcher["bot_instance"]
     if bot and bot.session:
@@ -314,7 +341,8 @@ async def run_bot(settings_param: Settings):
     dp.update.outer_middleware(ActionLoggerMiddleware(settings=settings_param))
 
     dp.startup.register(on_startup_configured)
-    dp.shutdown.register(lambda: on_shutdown_configured(dp))
+    # Register shutdown callback directly so Dispatcher instance is provided
+    dp.shutdown.register(on_shutdown_configured)
 
     await register_all_routers(dp, settings_param)
 
