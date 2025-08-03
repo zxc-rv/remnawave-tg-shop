@@ -223,3 +223,11 @@ def get_connect_and_main_keyboard(
     )
 
     return builder.as_markup()
+
+def get_payment_confirmation_markup(lang: str, i18n_instance) -> InlineKeyboardMarkup:
+    _ = lambda key, **kwargs: i18n_instance.gettext(lang, key, **kwargs)
+    builder = InlineKeyboardBuilder()
+    builder.button(text=_(key="payment_confirmation_button"),
+                   callback_data="payment_action:confirm_paid")
+    return builder.as_markup()
+
