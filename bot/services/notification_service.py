@@ -69,12 +69,19 @@ async def notify_admin_promo_activation(bot: Bot, settings: Settings,
 
 async def notify_admin_payment_confirmation(bot: Bot, settings: Settings, i18n: JsonI18n,
                                            user_id: int, user_name: str) -> None:
-    await notify_admins(
-        bot,
-        settings,
-        i18n,
-        "admin_payment_confirmation_notification",
-        user_id=user_id,
-        user_name=hd.quote(user_name),
-    )
+    if not settings.ADMIN_IDS:
+        return
+    
+    admin_lang = settings.DEFAULT_LANGUAGE
+    msg = i18n.gettext(admin_lang, "admin_payment_confirmation_with_buttons", 
+                       user_id=user_id, user_name=hd.quote(user_name))
+    
+    from bot.keyboards.inline.admin_keyboards import get_payment_confirmation_admin_keyboard
+    reply_markup = get_payment_confirmation_admin_keyboard(admin_lang, i18n, user_id)
+    
+    for admin_id in settings.ADMIN_IDS:
+        try:
+            await bot.send_message(admin_id, msg, reply_markup=reply_markup, parse_mode="HTML")
+        except Exception as e:
+            logging.error(f"Failed to send admin notification to {admin_id}: {e}")
 
