@@ -121,3 +121,68 @@ async def admin_panel_actions_callback_handler(
             f"Unknown admin_action received: {action} from callback {callback.data}"
         )
         await callback.answer(_("admin_unknown_action"), show_alert=True)
+
+@router.callback_query(F.data.startswith("admin_extend:"))
+async def admin_extend_subscription_handler(
+        callback: types.CallbackQuery, settings: Settings,
+        i18n_data: dict, bot: Bot, subscription_service: SubscriptionService,
+        panel_service: PanelApiService, session: AsyncSession):
+    
+    current_lang = i18n_data.get("current_language", settings.DEFAULT_LANGUAGE)
+    i18n: Optional[JsonI18n] = i18n_data.get("i18n_instance")
+    _ = lambda key, **kwargs: i18n.gettext(current_lang, key, **kwargs) if i18n else key
+    
+    try:
+        parts = callback.data.split(":")
+        target_user_id = int(parts[1])
+        action = parts[2]
+        
+        if action == "decline":
+            await callback.message.edit_text(
+                _("admin_payment_declined", user_id=target_user_id)
+            )
+            await callback.answer(_("admin_payment_declined", user_id=target_user_id))
+            return
+        
+        days_to_extend = int(action)
+        
+        from db.dal import user_dal
+        db_user = await user_dal.get_user_by_id(session, target_user_id)
+        if not db_user:
+            await callback.answer("User not found", show_alert=True)
+            return
+        
+        try:
+            current_subscription = await subscription_service.get_user_subscription(session, target_user_id)
+            
+            if current_subscription:
+                success = await subscription_service.extend_subscription(
+                    session, target_user_id, days_to_extend
+                )
+                
+                if success:
+                    await callback.message.edit_text(
+                        _("admin_subscription_extended", user_id=target_user_id, days=days_to_extend)
+                    )
+                    
+                    try:
+                        user_lang = db_user.language_code if db_user.language_code else settings.DEFAULT_LANGUAGE
+                        user_msg = i18n.gettext(user_lang, "subscription_extended_by_admin", days=days_to_extend)
+                        await bot.send_message(target_user_id, user_msg)
+                    except Exception as e:
+                        logging.warning(f"Failed to notify user {target_user_id} about extension: {e}")
+                    
+                    await callback.answer(_("admin_subscription_extended", user_id=target_user_id, days=days_to_extend))
+                else:
+                    await callback.answer(_("admin_extend_error", user_id=target_user_id, error="Extension failed"), show_alert=True)
+            else:
+                await callback.answer(_("admin_extend_error", user_id=target_user_id, error="No active subscription"), show_alert=True)
+                
+        except Exception as e:
+            logging.error(f"Error extending subscription for user {target_user_id}: {e}")
+            await callback.answer(_("admin_extend_error", user_id=target_user_id, error=str(e)), show_alert=True)
+            
+    except (ValueError, IndexError) as e:
+        logging.error(f"Invalid callback data in admin_extend_subscription_handler: {callback.data}")
+        await callback.answer("Invalid request", show_alert=True)
+
