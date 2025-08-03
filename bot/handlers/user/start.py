@@ -333,3 +333,30 @@ async def main_action_callback_handler(
         _ = lambda key, **kwargs: i18n.gettext(
             i18n_data.get("current_language"), key, **kw) if i18n else key
         await callback.answer(_("main_menu_unknown_action"), show_alert=True)
+
+@router.callback_query(F.data.startswith("payment_action:"))
+async def payment_action_callback_handler(
+        callback: types.CallbackQuery, settings: Settings,
+        i18n_data: dict, bot: Bot, session: AsyncSession):
+    action = callback.data.split(":")[1]
+    user_id = callback.from_user.id
+    
+    current_lang = i18n_data.get("current_language", settings.DEFAULT_LANGUAGE)
+    i18n: Optional[JsonI18n] = i18n_data.get("i18n_instance")
+    _ = lambda key, **kwargs: i18n.gettext(current_lang, key, **kwargs) if i18n else key
+    
+    if action == "confirm_paid":
+        # Получить данные пользователя для уведомления
+        from db.dal import user_dal
+        db_user = await user_dal.get_user_by_id(session, user_id)
+        user_name = db_user.first_name if db_user and db_user.first_name else f"User {user_id}"
+        
+        # Отправить уведомление админам
+        from bot.services.notification_service import notify_admin_payment_confirmation
+        await notify_admin_payment_confirmation(bot, settings, i18n, user_id, user_name)
+        
+        # Ответить пользователю
+        await callback.answer(_("payment_confirmation_sent"), show_alert=True)
+        
+        logging.info(f"User {user_id} ({user_name}) reported payment confirmation")
+
