@@ -126,7 +126,7 @@ async def admin_panel_actions_callback_handler(
 async def admin_extend_subscription_handler(
         callback: types.CallbackQuery, settings: Settings,
         i18n_data: dict, bot: Bot, subscription_service: SubscriptionService,
-        panel_service: PanelApiService, session: AsyncSession):
+        session: AsyncSession):
     
     current_lang = i18n_data.get("current_language", settings.DEFAULT_LANGUAGE)
     i18n: Optional[JsonI18n] = i18n_data.get("i18n_instance")
@@ -146,43 +146,42 @@ async def admin_extend_subscription_handler(
         
         days_to_extend = int(action)
         
-        from db.dal import user_dal
-        db_user = await user_dal.get_user_by_id(session, target_user_id)
-        if not db_user:
-            await callback.answer("User not found", show_alert=True)
-            return
+        new_end_date = await subscription_service.extend_active_subscription_days(
+            session, 
+            target_user_id, 
+            days_to_extend, 
+            reason="admin_manual_extension"
+        )
         
-        try:
-            current_subscription = await subscription_service.get_user_subscription(session, target_user_id)
+        if new_end_date:
+            await callback.message.edit_text(
+                _("admin_subscription_extended", user_id=target_user_id, days=days_to_extend) +
+                f"\n📅 Новая дата окончания: {new_end_date.strftime('%Y-%m-%d %H:%M')}"
+            )
             
-            if current_subscription:
-                success = await subscription_service.extend_subscription(
-                    session, target_user_id, days_to_extend
-                )
-                
-                if success:
-                    await callback.message.edit_text(
-                        _("admin_subscription_extended", user_id=target_user_id, days=days_to_extend)
-                    )
-                    
-                    try:
-                        user_lang = db_user.language_code if db_user.language_code else settings.DEFAULT_LANGUAGE
-                        user_msg = i18n.gettext(user_lang, "subscription_extended_by_admin", days=days_to_extend)
-                        await bot.send_message(target_user_id, user_msg)
-                    except Exception as e:
-                        logging.warning(f"Failed to notify user {target_user_id} about extension: {e}")
-                    
-                    await callback.answer(_("admin_subscription_extended", user_id=target_user_id, days=days_to_extend))
-                else:
-                    await callback.answer(_("admin_extend_error", user_id=target_user_id, error="Extension failed"), show_alert=True)
-            else:
-                await callback.answer(_("admin_extend_error", user_id=target_user_id, error="No active subscription"), show_alert=True)
-                
-        except Exception as e:
-            logging.error(f"Error extending subscription for user {target_user_id}: {e}")
-            await callback.answer(_("admin_extend_error", user_id=target_user_id, error=str(e)), show_alert=True)
+            try:
+                from db.dal import user_dal
+                db_user = await user_dal.get_user_by_id(session, target_user_id)
+                user_lang = db_user.language_code if db_user and db_user.language_code else settings.DEFAULT_LANGUAGE
+                user_msg = i18n.gettext(user_lang, "subscription_extended_by_admin", 
+                                       days=days_to_extend,
+                                       end_date=new_end_date.strftime('%Y-%m-%d %H:%M'))
+                await bot.send_message(target_user_id, user_msg)
+            except Exception as e:
+                logging.warning(f"Failed to notify user {target_user_id} about extension: {e}")
+            
+            await callback.answer(f"✅ Продлено на {days_to_extend} дней")
+        else:
+            await callback.answer("❌ Ошибка продления подписки", show_alert=True)
+            await callback.message.edit_text(
+                _("admin_extend_error", user_id=target_user_id, error="Ошибка в subscription_service")
+            )
             
     except (ValueError, IndexError) as e:
         logging.error(f"Invalid callback data in admin_extend_subscription_handler: {callback.data}")
         await callback.answer("Invalid request", show_alert=True)
+    except Exception as e:
+        logging.error(f"Error in admin extend handler: {e}")
+        await callback.answer(f"❌ Ошибка: {str(e)}", show_alert=True)
+
 
