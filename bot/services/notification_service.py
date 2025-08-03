@@ -66,3 +66,15 @@ async def notify_admin_promo_activation(bot: Bot, settings: Settings,
         code=code,
         bonus_days=bonus_days,
     )
+
+async def notify_admin_payment_confirmation(bot: Bot, settings: Settings, i18n: JsonI18n,
+                                           user_id: int, user_name: str) -> None:
+    await notify_admins(
+        bot,
+        settings,
+        i18n,
+        "admin_payment_confirmation_notification",
+        user_id=user_id,
+        user_name=hd.quote(user_name),
+    )
+
