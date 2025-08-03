@@ -9,7 +9,7 @@ from sqlalchemy.orm import sessionmaker
 from typing import Optional
 from config.settings import Settings
 from bot.middlewares.i18n import JsonI18n
-from bot.keyboards.inline.user_keyboards import get_subscribe_only_markup
+from bot.keyboards.inline.user_keyboards import get_payment_confirmation_markup
 from db.dal import user_dal
 
 EVENT_MAP = {
@@ -56,7 +56,7 @@ class PanelWebhookService:
             lang = db_user.language_code if db_user and db_user.language_code else self.settings.DEFAULT_LANGUAGE
             first_name = db_user.first_name or f"User {user_id}" if db_user else f"User {user_id}"
 
-        markup = get_subscribe_only_markup(lang, self.i18n)
+        markup = get_payment_confirmation_markup(lang, self.i18n)
 
         if event_name in EVENT_MAP:
             days_left, msg_key = EVENT_MAP[event_name]
