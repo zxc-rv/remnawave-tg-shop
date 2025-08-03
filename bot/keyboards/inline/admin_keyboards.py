@@ -195,3 +195,20 @@ def get_back_to_admin_panel_keyboard(lang: str,
     builder.button(text=_(key="back_to_admin_panel_button"),
                    callback_data="admin_action:main")
     return builder.as_markup()
+
+def get_payment_confirmation_admin_keyboard(lang: str, i18n_instance, user_id: int) -> InlineKeyboardMarkup:
+    _ = lambda key, **kwargs: i18n_instance.gettext(lang, key, **kwargs)
+    builder = InlineKeyboardBuilder()
+    
+    builder.button(text=_("admin_extend_30_days"), 
+                   callback_data=f"admin_extend:{user_id}:30")
+    builder.button(text=_("admin_extend_60_days"), 
+                   callback_data=f"admin_extend:{user_id}:60")
+    builder.button(text=_("admin_extend_90_days"), 
+                   callback_data=f"admin_extend:{user_id}:90")
+    
+    builder.button(text=_("admin_payment_decline"), 
+                   callback_data=f"admin_extend:{user_id}:decline")
+    
+    builder.adjust(3, 1)
+    return builder.as_markup()
