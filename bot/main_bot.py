@@ -180,16 +180,38 @@ async def on_startup_configured(dispatcher: Dispatcher):
                 f"STARTUP: Failed to register mini app domain: {e}", exc_info=True
             )
 
+    user_commands = []
     if settings.START_COMMAND_DESCRIPTION:
-        try:
-            await bot.set_my_commands([
-                BotCommand(command="start", description=settings.START_COMMAND_DESCRIPTION)
-            ])
-            logging.info("STARTUP: /start command description set.")
-        except Exception as e:
-            logging.error(f"STARTUP: Failed to set bot commands: {e}", exc_info=True)
-
-    logging.info("STARTUP: Bot on_startup_configured completed.")
+        user_commands.append(BotCommand(command="start", description=settings.START_COMMAND_DESCRIPTION))
+    
+    user_commands.extend([
+        BotCommand(command="language", description="🌐 Change language / Изменить язык"),
+        BotCommand(command="connect", description="🔐 Connect to VPN / Подключиться к VPN"),
+    ])
+    
+    try:
+        await bot.set_my_commands(user_commands, scope=BotCommandScopeDefault())
+        logging.info("STARTUP: User commands set successfully.")
+    except Exception as e:
+        logging.error(f"STARTUP: Failed to set user commands: {e}", exc_info=True)
+    
+    if settings.ADMIN_IDS:
+        admin_commands = user_commands.copy()
+        admin_commands.extend([
+            BotCommand(command="admin", description="👨‍💼 Admin panel / Админ панель"),
+            BotCommand(command="sync", description="🔄 Sync with panel / Синхронизация с панелью"),
+            BotCommand(command="syncstatus", description="📊 Sync status / Статус синхронизации"),
+        ])
+        
+        for admin_id in settings.ADMIN_IDS:
+            try:
+                await bot.set_my_commands(
+                    admin_commands, 
+                    scope=BotCommandScopeChat(chat_id=admin_id)
+                )
+                logging.info(f"STARTUP: Admin commands set for {admin_id}.")
+            except Exception as e:
+                logging.error(f"STARTUP: Failed to set admin commands for {admin_id}: {e}", exc_info=True)
 
 
 async def on_shutdown_configured(dispatcher: Dispatcher):
