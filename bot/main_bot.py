@@ -9,6 +9,8 @@ from aiogram.types import (
     MenuButtonWebApp,
     WebAppInfo,
     BotCommand,
+    BotCommandScopeChat,
+    BotCommandScopeDefault,
 )
 from aiogram.enums import ParseMode
 from aiogram.filters import CommandStart, Command
