@@ -181,11 +181,15 @@ async def on_startup_configured(dispatcher: Dispatcher):
             )
 
     user_commands = []
+    
     if settings.START_COMMAND_DESCRIPTION:
         user_commands.append(BotCommand(command="start", description=settings.START_COMMAND_DESCRIPTION))
-        user_commands.extend([
-            BotCommand(command="connect", description="⚙️ Моя подписка"),
-        ])
+    else:
+        user_commands.append(BotCommand(command="start", description="🚀 Запустить бота"))
+    
+    user_commands.extend([
+        BotCommand(command="connect", description="⚙️ Моя подписка"),
+    ])
     
     try:
         await bot.set_my_commands(user_commands, scope=BotCommandScopeDefault())
@@ -196,7 +200,7 @@ async def on_startup_configured(dispatcher: Dispatcher):
     if settings.ADMIN_IDS:
         admin_commands = user_commands.copy()
         admin_commands.extend([
-            BotCommand(command="admin", description="👨‍💼 Админ панель"),
+            BotCommand(command="admin", description="🫅🏻 Админка"),
             BotCommand(command="sync", description="🔄 Синхронизация"),
             BotCommand(command="syncstatus", description="📊 Статус синхронизации"),
         ])
@@ -210,6 +214,7 @@ async def on_startup_configured(dispatcher: Dispatcher):
                 logging.info(f"STARTUP: Admin commands set for {admin_id}.")
             except Exception as e:
                 logging.error(f"STARTUP: Failed to set admin commands for {admin_id}: {e}", exc_info=True)
+
 
 
 async def on_shutdown_configured(dispatcher: Dispatcher):
