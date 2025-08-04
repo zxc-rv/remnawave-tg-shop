@@ -180,22 +180,23 @@ async def on_startup_configured(dispatcher: Dispatcher):
                 f"STARTUP: Failed to register mini app domain: {e}", exc_info=True
             )
 
-    user_commands = []
+try:
+    await bot.delete_my_commands(scope=BotCommandScopeDefault())
     
-    if settings.START_COMMAND_DESCRIPTION:
-        user_commands.append(BotCommand(command="start", description=settings.START_COMMAND_DESCRIPTION))
-    else:
-        user_commands.append(BotCommand(command="start", description="🚀 Запустить бота"))
+    if settings.ADMIN_IDS:
+        for admin_id in settings.ADMIN_IDS:
+            try:
+                await bot.delete_my_commands(scope=BotCommandScopeChat(chat_id=admin_id))
+            except:
+                pass
     
-    user_commands.extend([
+    user_commands = [
+        BotCommand(command="start", description=settings.START_COMMAND_DESCRIPTION or "🚀 Запустить бота"),
         BotCommand(command="connect", description="⚙️ Моя подписка"),
-    ])
+    ]
     
-    try:
-        await bot.set_my_commands(user_commands, scope=BotCommandScopeDefault())
-        logging.info("STARTUP: User commands set successfully.")
-    except Exception as e:
-        logging.error(f"STARTUP: Failed to set user commands: {e}", exc_info=True)
+    await bot.set_my_commands(user_commands, scope=BotCommandScopeDefault())
+    logging.info(f"STARTUP: Set {len(user_commands)} user commands: {[cmd.command for cmd in user_commands]}")
     
     if settings.ADMIN_IDS:
         admin_commands = user_commands.copy()
@@ -206,14 +207,11 @@ async def on_startup_configured(dispatcher: Dispatcher):
         ])
         
         for admin_id in settings.ADMIN_IDS:
-            try:
-                await bot.set_my_commands(
-                    admin_commands, 
-                    scope=BotCommandScopeChat(chat_id=admin_id)
-                )
-                logging.info(f"STARTUP: Admin commands set for {admin_id}.")
-            except Exception as e:
-                logging.error(f"STARTUP: Failed to set admin commands for {admin_id}: {e}", exc_info=True)
+            await bot.set_my_commands(admin_commands, scope=BotCommandScopeChat(chat_id=admin_id))
+            logging.info(f"STARTUP: Set {len(admin_commands)} admin commands for {admin_id}")
+            
+except Exception as e:
+    logging.error(f"STARTUP: Failed to set commands: {e}", exc_info=True)
 
 
 
