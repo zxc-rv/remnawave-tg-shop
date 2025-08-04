@@ -194,7 +194,6 @@ async def on_startup_configured(dispatcher: Dispatcher):
             BotCommand(command="connect", description="⚙️ Моя подписка"),
             BotCommand(command="admin", description="🫅🏻 Админка"),
             BotCommand(command="sync", description="🔄 Синхронизация"),
-            BotCommand(command="syncstatus", description="📊 Статус синхронизации"),
         ]
         
         for admin_id in settings.ADMIN_IDS:
