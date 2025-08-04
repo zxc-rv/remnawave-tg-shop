@@ -183,11 +183,9 @@ async def on_startup_configured(dispatcher: Dispatcher):
     user_commands = []
     if settings.START_COMMAND_DESCRIPTION:
         user_commands.append(BotCommand(command="start", description=settings.START_COMMAND_DESCRIPTION))
-    
-    user_commands.extend([
-        BotCommand(command="language", description="🌐 Change language / Изменить язык"),
-        BotCommand(command="connect", description="🔐 Connect to VPN / Подключиться к VPN"),
-    ])
+        user_commands.extend([
+            BotCommand(command="connect", description="⚙️ Моя подписка"),
+        ])
     
     try:
         await bot.set_my_commands(user_commands, scope=BotCommandScopeDefault())
@@ -198,9 +196,9 @@ async def on_startup_configured(dispatcher: Dispatcher):
     if settings.ADMIN_IDS:
         admin_commands = user_commands.copy()
         admin_commands.extend([
-            BotCommand(command="admin", description="👨‍💼 Admin panel / Админ панель"),
-            BotCommand(command="sync", description="🔄 Sync with panel / Синхронизация с панелью"),
-            BotCommand(command="syncstatus", description="📊 Sync status / Статус синхронизации"),
+            BotCommand(command="admin", description="👨‍💼 Админ панель"),
+            BotCommand(command="sync", description="🔄 Синхронизация"),
+            BotCommand(command="syncstatus", description="📊 Статус синхронизации"),
         ])
         
         for admin_id in settings.ADMIN_IDS:
