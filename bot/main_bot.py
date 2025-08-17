@@ -184,10 +184,10 @@ async def on_startup_configured(dispatcher: Dispatcher):
         BotCommand(command="start", description=settings.START_COMMAND_DESCRIPTION or "🚀 Запустить бота"),
         BotCommand(command="connect", description="⚙️ Моя подписка"),
     ]
-    
+
     await bot.set_my_commands(user_commands, scope=BotCommandScopeDefault())
     logging.info(f"STARTUP: Set {len(user_commands)} user commands: {[cmd.command for cmd in user_commands]}")
-    
+
     if settings.ADMIN_IDS:
         admin_commands = [
             BotCommand(command="start", description=settings.START_COMMAND_DESCRIPTION or "🚀 Запустить бота"),
@@ -195,7 +195,7 @@ async def on_startup_configured(dispatcher: Dispatcher):
             BotCommand(command="admin", description="🫅🏻 Админка"),
             BotCommand(command="sync", description="🔄 Синхронизация"),
         ]
-        
+
         for admin_id in settings.ADMIN_IDS:
             await bot.set_my_commands(admin_commands, scope=BotCommandScopeChat(chat_id=admin_id))
             logging.info(f"STARTUP: Set {len(admin_commands)} admin commands for {admin_id}")
@@ -213,20 +213,29 @@ async def on_shutdown_configured(dispatcher: Dispatcher):
         close_coro = getattr(service, "close", None)
         if callable(close_coro):
             try:
-                await close_coro()
+                close_result = close_coro()
+                if hasattr(close_result, '__await__'):
+                    await asyncio.wait_for(close_result, timeout=2.0)
                 logging.info(f"{key} closed on shutdown.")
+            except asyncio.TimeoutError:
+                logging.warning(f"Timeout closing {key}")
             except Exception as e:
                 logging.warning(f"Failed to close {key}: {e}")
         else:
             close_session = getattr(service, "close_session", None)
             if callable(close_session):
                 try:
-                    await close_session()
+                    session_result = close_session()
+                    if hasattr(session_result, '__await__'):
+                        await asyncio.wait_for(session_result, timeout=2.0)
                     logging.info(f"{key} session closed on shutdown.")
+                except asyncio.TimeoutError:
+                    logging.warning(f"Timeout closing session for {key}")
                 except Exception as e:
                     logging.warning(f"Failed to close session for {key}: {e}")
 
-    for service_key in (
+    # Close services concurrently with timeout
+    service_keys = (
         "panel_service",
         "cryptopay_service",
         "tribute_service",
@@ -236,14 +245,21 @@ async def on_shutdown_configured(dispatcher: Dispatcher):
         "stars_service",
         "subscription_service",
         "referral_service",
-    ):
-        await close_service(service_key)
+    )
+
+    close_tasks = [close_service(key) for key in service_keys]
+    try:
+        await asyncio.wait_for(asyncio.gather(*close_tasks, return_exceptions=True), timeout=3.0)
+    except asyncio.TimeoutError:
+        logging.warning("Timeout during service shutdown, proceeding...")
 
     bot: Bot = dispatcher["bot_instance"]
     if bot and bot.session:
         try:
-            await bot.session.close()
+            await asyncio.wait_for(bot.session.close(), timeout=2.0)
             logging.info("SHUTDOWN: Aiogram Bot session closed.")
+        except asyncio.TimeoutError:
+            logging.warning("SHUTDOWN: Timeout closing bot session")
         except Exception as e:
             logging.warning(f"SHUTDOWN: Failed to close bot session: {e}")
 
@@ -251,13 +267,18 @@ async def on_shutdown_configured(dispatcher: Dispatcher):
 
     if global_async_engine:
         logging.info("SHUTDOWN: Disposing SQLAlchemy engine...")
-        await global_async_engine.dispose()
-        logging.info("SHUTDOWN: SQLAlchemy engine disposed.")
+        try:
+            await asyncio.wait_for(global_async_engine.dispose(), timeout=2.0)
+            logging.info("SHUTDOWN: SQLAlchemy engine disposed.")
+        except asyncio.TimeoutError:
+            logging.warning("SHUTDOWN: Timeout disposing SQLAlchemy engine")
+        except Exception as e:
+            logging.warning(f"SHUTDOWN: Failed to dispose SQLAlchemy engine: {e}")
 
     logging.info("SHUTDOWN: Bot on_shutdown_configured completed.")
 
 
-async def run_bot(settings_param: Settings):
+async def run_bot(settings_param: Settings, shutdown_event: Optional[asyncio.Event] = None):
     storage = MemoryStorage()
     default_props = DefaultBotProperties(parse_mode=ParseMode.HTML)
     bot = Bot(token=settings_param.BOT_TOKEN, default=default_props)
@@ -457,11 +478,14 @@ async def run_bot(settings_param: Settings):
             logging.info(
                 f"AIOHTTP server started on http://{settings_param.WEB_SERVER_HOST}:{settings_param.WEB_SERVER_PORT}"
             )
-            (
-                await asyncio.Event().wait()
-                if not run_telegram_polling
-                else await asyncio.sleep(31536000)
-            )
+            if shutdown_event is not None:
+                await shutdown_event.wait()
+            else:
+                (
+                    await asyncio.Event().wait()
+                    if not run_telegram_polling
+                    else await asyncio.sleep(31536000)
+                )
 
         main_tasks.append(
             asyncio.create_task(web_server_task(), name="AIOHTTPServerTask")
@@ -488,7 +512,22 @@ async def run_bot(settings_param: Settings):
     )
 
     try:
-        await asyncio.gather(*main_tasks)
+        if shutdown_event is not None:
+            # Create a task for shutdown monitoring
+            shutdown_task = asyncio.create_task(shutdown_event.wait(), name="ShutdownMonitor")
+            main_tasks.append(shutdown_task)
+
+            # Wait for either main tasks to complete or shutdown signal
+            done, pending = await asyncio.wait(main_tasks, return_when=asyncio.FIRST_COMPLETED)
+
+            # If shutdown was triggered, cancel all pending tasks
+            if shutdown_task in done:
+                logging.info("Shutdown signal received, cancelling all tasks...")
+                for task in pending:
+                    task.cancel()
+                await asyncio.gather(*pending, return_exceptions=True)
+        else:
+            await asyncio.gather(*main_tasks)
     except (KeyboardInterrupt, SystemExit, asyncio.CancelledError) as e:
         logging.info(f"Main bot loop interrupted/cancelled: {type(e).__name__} - {e}")
     finally:
@@ -509,10 +548,20 @@ async def run_bot(settings_param: Settings):
                     )
 
         if web_app_runner:
-            await web_app_runner.cleanup()
-            logging.info("AIOHTTP AppRunner cleaned up.")
+            try:
+                await asyncio.wait_for(web_app_runner.cleanup(), timeout=2.0)
+                logging.info("AIOHTTP AppRunner cleaned up.")
+            except asyncio.TimeoutError:
+                logging.warning("Timeout during AIOHTTP AppRunner cleanup")
+            except Exception as e:
+                logging.warning(f"Error during AIOHTTP AppRunner cleanup: {e}")
 
-        await dp.emit_shutdown()
-        logging.info("Dispatcher shutdown sequence emitted.")
+        try:
+            await asyncio.wait_for(dp.emit_shutdown(), timeout=3.0)
+            logging.info("Dispatcher shutdown sequence emitted.")
+        except asyncio.TimeoutError:
+            logging.warning("Timeout during dispatcher shutdown")
+        except Exception as e:
+            logging.warning(f"Error during dispatcher shutdown: {e}")
 
         logging.info("Bot run_bot function finished.")

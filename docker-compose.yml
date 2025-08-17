@@ -1,7 +1,7 @@
 services:
   remnawave-tg-shop:
     image: ghcr.io/zxc-rv/remnawave-tg-shop:latest
-#    build: .
+    #    build: .
     container_name: remnawave-tg-shop
     hostname: remnawave-tg-shop
     env_file:
