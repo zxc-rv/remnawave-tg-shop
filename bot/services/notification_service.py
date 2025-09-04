@@ -26,7 +26,7 @@ async def notify_admins(bot: Bot, settings: Settings, i18n: JsonI18n,
 
 async def notify_admin_new_trial(bot: Bot, settings: Settings, i18n: JsonI18n,
                                  user_id: int, end_date: datetime) -> None:
-    end_date_str = end_date.strftime('%Y-%m-%d') if isinstance(end_date, datetime) else str(end_date)
+    end_date_str = end_date.strftime('%d.%m.%Y') if isinstance(end_date, datetime) else str(end_date)
     await notify_admins(
         bot,
         settings,

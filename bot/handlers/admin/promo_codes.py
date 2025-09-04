@@ -88,7 +88,7 @@ async def process_promo_code_details_handler(message: types.Message,
                 timezone.utc) + timedelta(days=valid_days_from_now)
             valid_until_str_display = _(
                 "admin_promo_valid_until_display",
-                date=valid_until_date.strftime('%Y-%m-%d'))
+                date=valid_until_date.strftime('%d.%m.%Y'))
 
         if bonus_days <= 0 or max_activations <= 0:
             raise ValueError(_("admin_promo_invalid_bonus_or_activations"))
@@ -168,7 +168,7 @@ async def view_promo_codes_handler(callback: types.CallbackQuery,
         valid_until_display_text = _("admin_promo_valid_indefinitely")
         if promo.valid_until:
 
-            valid_until_display_text = promo.valid_until.strftime('%Y-%m-%d')
+            valid_until_display_text = promo.valid_until.strftime('%d.%m.%Y')
 
         response_text_parts.append(
             _("admin_promo_list_item",

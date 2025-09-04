@@ -99,7 +99,7 @@ class ReferralService:
                                        days=inviter_bonus_days,
                                        referee_name=referee_name_for_msg,
                                        new_end_date=new_end_date_inviter.
-                                       strftime('%Y-%m-%d')))
+                                       strftime('%d.%m.%Y')))
                             except Exception as e_notify_inviter:
                                 logging.error(
                                     f"Failed to send bonus notification to inviter {inviter_user_id}: {e_notify_inviter}"
@@ -171,7 +171,7 @@ class ReferralService:
                                                referee_name=
                                                referee_name_for_msg,
                                                new_end_date=bonus_end_date.
-                                               strftime('%Y-%m-%d')))
+                                               strftime('%d.%m.%Y')))
                                     else:
                                         logging.warning(
                                             f"Failed to update panel for new bonus subscription for inviter {inviter_user_id}. Local bonus sub created (ID: {bonus_sub.subscription_id}) but may not be active on panel."

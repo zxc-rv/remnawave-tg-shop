@@ -168,7 +168,7 @@ async def admin_extend_subscription_handler(
                 user_lang = db_user.language_code if db_user and db_user.language_code else settings.DEFAULT_LANGUAGE
                 user_msg = i18n.gettext(user_lang, "subscription_extended_by_admin", 
                                        days=days_to_extend,
-                                       end_date=new_end_date.strftime('%Y-%m-%d %H:%M'))
+                                       end_date=new_end_date.strftime('%d-%m-%Y'))
                 await bot.send_message(target_user_id, user_msg)
             except Exception as e:
                 logging.warning(f"Failed to notify user {target_user_id} about extension: {e}")
