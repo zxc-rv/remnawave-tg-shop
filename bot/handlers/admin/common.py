@@ -140,7 +140,7 @@ async def admin_extend_subscription_handler(
         action = parts[2]
         
         db_user = await user_dal.get_user_by_id(session, target_user_id)
-        user_name = db_user.username if db_user and db_user.username else "неизвестный"
+        user_name = f"{db_user.first_name or ''} {db_user.last_name or ''}".strip() if db_user else f"ID{target_user_id}"
         
         if action == "decline":
             await callback.message.edit_text(
