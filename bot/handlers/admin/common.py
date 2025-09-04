@@ -140,13 +140,13 @@ async def admin_extend_subscription_handler(
         action = parts[2]
         
         db_user = await user_dal.get_user_by_id(session, target_user_id)
-        user_display = db_user.username if db_user and db_user.username else "неизвестный"
+        user_name = db_user.username if db_user and db_user.username else "неизвестный"
         
         if action == "decline":
             await callback.message.edit_text(
-                _("admin_payment_declined", user_display=user_display, user_id=target_user_id)
+                _("admin_payment_declined", user_name=user_name, user_id=target_user_id)
             )
-            await callback.answer(_("admin_payment_declined", user_display=user_display, user_id=target_user_id))
+            await callback.answer(_("admin_payment_declined", user_name=user_name, user_id=target_user_id))
             return
         
         days_to_extend = int(action)
@@ -160,7 +160,7 @@ async def admin_extend_subscription_handler(
         
         if new_end_date:
             await callback.message.edit_text(
-                _("admin_subscription_extended", user_display=user_display, user_id=target_user_id, days=days_to_extend) +
+                _("admin_subscription_extended", user_name=user_name, user_id=target_user_id, days=days_to_extend) +
                 f"\n📅 Новая дата окончания: {new_end_date.strftime('%Y-%m-%d %H:%M')}"
             )
             
