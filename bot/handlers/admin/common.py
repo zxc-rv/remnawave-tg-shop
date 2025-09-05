@@ -161,7 +161,7 @@ async def admin_extend_subscription_handler(
         if new_end_date:
             await callback.message.edit_text(
                 _("admin_subscription_extended", user_name=user_name, user_id=target_user_id, days=days_to_extend) +
-                f"\n📅 Новая дата окончания: {new_end_date.strftime('%d.%m.%Y')}"
+                f"\n📅 Новая дата окончания: <b>{new_end_date.strftime('%d.%m.%Y')}</b>"
             )
             
             try:
