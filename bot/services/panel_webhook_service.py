@@ -11,6 +11,7 @@ from config.settings import Settings
 from bot.middlewares.i18n import JsonI18n
 from bot.keyboards.inline.user_keyboards import get_payment_confirmation_markup
 from db.dal import user_dal
+from datetime import datetime
 
 EVENT_MAP = {
     "user.expires_in_72_hours": (3, "subscription_72h_notification"),
@@ -24,6 +25,15 @@ class PanelWebhookService:
         self.settings = settings
         self.i18n = i18n
         self.async_session_factory = async_session_factory
+
+    def _format_panel_date(self, date_str: str) -> str:
+        if not date_str or len(date_str) < 10:
+            return date_str
+        try:
+            dt = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+            return dt.strftime('%d.%m.%Y')
+        except:
+            return date_str[:10]
 
     async def _send_message(
         self,
@@ -67,7 +77,7 @@ class PanelWebhookService:
                     msg_key,
                     reply_markup=markup,
                     user_name=first_name,
-                    end_date=user_payload.get("expireAt", "")[:10],
+                    end_date=self._format_panel_date(user_payload.get("expireAt", "")),
                 )
         elif event_name == "user.expired" and self.settings.SUBSCRIPTION_NOTIFY_ON_EXPIRE:
             await self._send_message(
@@ -76,7 +86,7 @@ class PanelWebhookService:
                 "subscription_expired_notification",
                 reply_markup=markup,
                 user_name=first_name,
-                end_date=user_payload.get("expireAt", "")[:10],
+                end_date=self._format_panel_date(user_payload.get("expireAt", "")),
             )
         elif event_name == "user.expired_24_hours_ago" and self.settings.SUBSCRIPTION_NOTIFY_AFTER_EXPIRE:
             await self._send_message(
@@ -85,7 +95,7 @@ class PanelWebhookService:
                 "subscription_expired_yesterday_notification",
                 reply_markup=markup,
                 user_name=first_name,
-                end_date=user_payload.get("expireAt", "")[:10],
+                end_date=self._format_panel_date(user_payload.get("expireAt", "")),
             )
 
     async def handle_webhook(self, raw_body: bytes, signature_header: Optional[str]) -> web.Response:
