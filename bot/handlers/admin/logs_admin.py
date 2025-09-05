@@ -102,7 +102,7 @@ async def _display_formatted_logs(target_message: types.Message,
                                    content_raw or "N/A")
 
             timestamp_str_display = log_entry_model.timestamp.strftime(
-                '%Y-%m-%d %H:%M:%S') if log_entry_model.timestamp else 'N/A'
+                '%d.%m.%Y %H:%M:%S') if log_entry_model.timestamp else 'N/A'
 
             log_entries_text.append(
                 _("admin_log_entry_format",

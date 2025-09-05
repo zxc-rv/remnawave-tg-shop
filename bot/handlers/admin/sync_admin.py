@@ -329,7 +329,7 @@ async def sync_status_command_handler(
     if status_record_model:
         last_time_val = status_record_model.last_sync_time
         last_time_str = (
-            last_time_val.strftime("%Y-%m-%d %H:%M:%S UTC") if last_time_val else "N/A"
+            last_time_val.strftime("%d.%m.%Y %H:%M:%S UTC") if last_time_val else "N/A"
         )
 
         details_val = status_record_model.details

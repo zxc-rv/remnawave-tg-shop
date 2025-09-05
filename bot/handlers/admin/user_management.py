@@ -288,7 +288,7 @@ async def _show_user_card_actual(target_message: types.Message,
         session, user_id_to_show) or _("user_card_sub_na")
 
     reg_date_display = user_model.registration_date.strftime(
-        '%Y-%m-%d %H:%M') if user_model.registration_date else "N/A"
+        '%d.%m.%Y %H:%M') if user_model.registration_date else "N/A"
 
     card_text = _("user_card_info",
                   user_id=user_model.user_id,
