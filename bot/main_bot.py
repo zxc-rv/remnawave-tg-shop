@@ -160,7 +160,7 @@ async def on_startup_configured(dispatcher: Dispatcher):
 
     user_commands = [
         BotCommand(
-            command="start",
+            command="menu",
             description=settings.START_COMMAND_DESCRIPTION or "📜 Главное меню",
         ),
         BotCommand(command="sub", description="⚙️ Моя подписка"),
@@ -174,7 +174,7 @@ async def on_startup_configured(dispatcher: Dispatcher):
     if settings.ADMIN_IDS:
         admin_commands = [
             BotCommand(
-                command="start",
+                command="menu",
                 description=settings.START_COMMAND_DESCRIPTION or "📜 Главное меню",
             ),
             BotCommand(command="sub", description="⚙️ Моя подписка"),
