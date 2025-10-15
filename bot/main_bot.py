@@ -158,27 +158,6 @@ async def on_startup_configured(dispatcher: Dispatcher):
         )
         await bot.delete_webhook(drop_pending_updates=True)
 
-    if settings.SUBSCRIPTION_MINI_APP_URL:
-        try:
-            menu_text = i18n_instance.gettext(
-                settings.DEFAULT_LANGUAGE,
-                "menu_my_subscription_inline",
-            )
-            await bot.set_chat_menu_button(
-                menu_button=MenuButtonWebApp(
-                    text=menu_text,
-                    web_app=WebAppInfo(url=settings.SUBSCRIPTION_MINI_APP_URL),
-                )
-            )
-            await bot.set_chat_menu_button(menu_button=MenuButtonDefault())
-            logging.info(
-                "STARTUP: Mini app domain registered and default menu button restored."
-            )
-        except Exception as e:
-            logging.error(
-                f"STARTUP: Failed to register mini app domain: {e}", exc_info=True
-            )
-
     user_commands = [
         BotCommand(
             command="start",
