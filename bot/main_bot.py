@@ -161,7 +161,7 @@ async def on_startup_configured(dispatcher: Dispatcher):
     user_commands = [
         BotCommand(
             command="start",
-            description=settings.START_COMMAND_DESCRIPTION or "🚀 Запустить бота",
+            description=settings.START_COMMAND_DESCRIPTION or "📜 Главное меню",
         ),
         BotCommand(command="sub", description="⚙️ Моя подписка"),
     ]
@@ -175,7 +175,7 @@ async def on_startup_configured(dispatcher: Dispatcher):
         admin_commands = [
             BotCommand(
                 command="start",
-                description=settings.START_COMMAND_DESCRIPTION or "🚀 Запустить бота",
+                description=settings.START_COMMAND_DESCRIPTION or "📜 Главное меню",
             ),
             BotCommand(command="sub", description="⚙️ Моя подписка"),
             BotCommand(command="admin", description="🫅🏻 Админка"),

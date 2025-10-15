@@ -19,11 +19,20 @@ def get_main_menu_inline_keyboard(
             )
         )
 
-    builder.row(
-        InlineKeyboardButton(
-            text=_(key="menu_subscribe_inline"), callback_data="main_action:subscribe"
+    if settings.SUBSCRIPTION_MINI_APP_URL:
+        builder.row(
+            InlineKeyboardButton(
+                text=_(key="menu_connect_button"),  # Новый текст
+                web_app=WebAppInfo(url=settings.SUBSCRIPTION_MINI_APP_URL),
+            )
         )
-    )
+    else:
+        builder.row(
+            InlineKeyboardButton(
+                text=_(key="menu_subscribe_inline"),
+                callback_data="main_action:subscribe",
+            )
+        )
 
     builder.row(
         InlineKeyboardButton(
