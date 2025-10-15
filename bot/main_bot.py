@@ -103,7 +103,6 @@ async def on_startup_configured(dispatcher: Dispatcher):
 
     logging.info("STARTUP: on_startup_configured executing...")
 
-
     telegram_webhook_url_to_set = settings.WEBHOOK_BASE_URL
     if telegram_webhook_url_to_set:
         full_telegram_webhook_url = (
@@ -181,26 +180,36 @@ async def on_startup_configured(dispatcher: Dispatcher):
             )
 
     user_commands = [
-        BotCommand(command="start", description=settings.START_COMMAND_DESCRIPTION or "🚀 Запустить бота"),
-        BotCommand(command="connect", description="⚙️ Моя подписка"),
+        BotCommand(
+            command="start",
+            description=settings.START_COMMAND_DESCRIPTION or "🚀 Запустить бота",
+        ),
+        BotCommand(command="sub", description="⚙️ Моя подписка"),
     ]
 
     await bot.set_my_commands(user_commands, scope=BotCommandScopeDefault())
-    logging.info(f"STARTUP: Set {len(user_commands)} user commands: {[cmd.command for cmd in user_commands]}")
+    logging.info(
+        f"STARTUP: Set {len(user_commands)} user commands: {[cmd.command for cmd in user_commands]}"
+    )
 
     if settings.ADMIN_IDS:
         admin_commands = [
-            BotCommand(command="start", description=settings.START_COMMAND_DESCRIPTION or "🚀 Запустить бота"),
-            BotCommand(command="connect", description="⚙️ Моя подписка"),
+            BotCommand(
+                command="start",
+                description=settings.START_COMMAND_DESCRIPTION or "🚀 Запустить бота",
+            ),
+            BotCommand(command="sub", description="⚙️ Моя подписка"),
             BotCommand(command="admin", description="🫅🏻 Админка"),
             BotCommand(command="sync", description="🔄 Синхронизация"),
         ]
 
         for admin_id in settings.ADMIN_IDS:
-            await bot.set_my_commands(admin_commands, scope=BotCommandScopeChat(chat_id=admin_id))
-            logging.info(f"STARTUP: Set {len(admin_commands)} admin commands for {admin_id}")
-
-
+            await bot.set_my_commands(
+                admin_commands, scope=BotCommandScopeChat(chat_id=admin_id)
+            )
+            logging.info(
+                f"STARTUP: Set {len(admin_commands)} admin commands for {admin_id}"
+            )
 
 
 async def on_shutdown_configured(dispatcher: Dispatcher):
@@ -214,7 +223,7 @@ async def on_shutdown_configured(dispatcher: Dispatcher):
         if callable(close_coro):
             try:
                 close_result = close_coro()
-                if hasattr(close_result, '__await__'):
+                if hasattr(close_result, "__await__"):
                     await asyncio.wait_for(close_result, timeout=2.0)
                 logging.info(f"{key} closed on shutdown.")
             except asyncio.TimeoutError:
@@ -226,7 +235,7 @@ async def on_shutdown_configured(dispatcher: Dispatcher):
             if callable(close_session):
                 try:
                     session_result = close_session()
-                    if hasattr(session_result, '__await__'):
+                    if hasattr(session_result, "__await__"):
                         await asyncio.wait_for(session_result, timeout=2.0)
                     logging.info(f"{key} session closed on shutdown.")
                 except asyncio.TimeoutError:
@@ -249,7 +258,9 @@ async def on_shutdown_configured(dispatcher: Dispatcher):
 
     close_tasks = [close_service(key) for key in service_keys]
     try:
-        await asyncio.wait_for(asyncio.gather(*close_tasks, return_exceptions=True), timeout=3.0)
+        await asyncio.wait_for(
+            asyncio.gather(*close_tasks, return_exceptions=True), timeout=3.0
+        )
     except asyncio.TimeoutError:
         logging.warning("Timeout during service shutdown, proceeding...")
 
@@ -278,7 +289,9 @@ async def on_shutdown_configured(dispatcher: Dispatcher):
     logging.info("SHUTDOWN: Bot on_shutdown_configured completed.")
 
 
-async def run_bot(settings_param: Settings, shutdown_event: Optional[asyncio.Event] = None):
+async def run_bot(
+    settings_param: Settings, shutdown_event: Optional[asyncio.Event] = None
+):
     storage = MemoryStorage()
     default_props = DefaultBotProperties(parse_mode=ParseMode.HTML)
     bot = Bot(token=settings_param.BOT_TOKEN, default=default_props)
@@ -394,9 +407,7 @@ async def run_bot(settings_param: Settings, shutdown_event: Optional[asyncio.Eve
     logging.info(
         f"Configured WEBHOOK_BASE_URL: '{tg_webhook_base}' -> Telegram Webhook Mode: {telegram_uses_webhook_mode}"
     )
-    logging.info(
-        f"YooKassa webhook path: '{settings_param.yookassa_webhook_path}'"
-    )
+    logging.info(f"YooKassa webhook path: '{settings_param.yookassa_webhook_path}'")
     logging.info(f"Decision: Run AIOHTTP server: {should_run_aiohttp_server}")
     logging.info(f"Decision: Run Telegram Polling: {run_telegram_polling}")
     logging.info(f"--- End Bot Run Mode Decision ---")
@@ -514,11 +525,15 @@ async def run_bot(settings_param: Settings, shutdown_event: Optional[asyncio.Eve
     try:
         if shutdown_event is not None:
             # Create a task for shutdown monitoring
-            shutdown_task = asyncio.create_task(shutdown_event.wait(), name="ShutdownMonitor")
+            shutdown_task = asyncio.create_task(
+                shutdown_event.wait(), name="ShutdownMonitor"
+            )
             main_tasks.append(shutdown_task)
 
             # Wait for either main tasks to complete or shutdown signal
-            done, pending = await asyncio.wait(main_tasks, return_when=asyncio.FIRST_COMPLETED)
+            done, pending = await asyncio.wait(
+                main_tasks, return_when=asyncio.FIRST_COMPLETED
+            )
 
             # If shutdown was triggered, cancel all pending tasks
             if shutdown_task in done:
