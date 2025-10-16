@@ -22,7 +22,7 @@ def get_main_menu_inline_keyboard(
     if settings.SUBSCRIPTION_MINI_APP_URL:
         builder.row(
             InlineKeyboardButton(
-                text=_(key="menu_connect_button"),  # Новый текст
+                text=_(key="menu_connect_button"),
                 web_app=WebAppInfo(url=settings.SUBSCRIPTION_MINI_APP_URL),
             )
         )
@@ -234,12 +234,20 @@ def get_connect_and_main_keyboard(
     _ = lambda key, **kwargs: i18n_instance.gettext(lang, key, **kwargs)
     builder = InlineKeyboardBuilder()
 
-    builder.row(
-        InlineKeyboardButton(
-            text=_("connect_button"),
-            callback_data="main_action:my_subscription",
+    if settings.SUBSCRIPTION_MINI_APP_URL:
+        builder.row(
+            InlineKeyboardButton(
+                text=_(key="menu_connect_button"),
+                web_app=WebAppInfo(url=settings.SUBSCRIPTION_MINI_APP_URL),
+            )
         )
-    )
+    else:
+        builder.row(
+            InlineKeyboardButton(
+                text=_("connect_button"),
+                callback_data="main_action:my_subscription",
+            )
+        )
 
     builder.row(
         InlineKeyboardButton(
