@@ -152,9 +152,9 @@ async def process_successful_payment(session: AsyncSession, bot: Bot,
             details_message = _(
                 "payment_successful_with_referral_bonus_full",
                 months=subscription_months,
-                base_end_date=base_subscription_end_date.strftime('%Y-%m-%d'),
+                base_end_date=base_subscription_end_date.strftime('%d.%m.%Y'),
                 bonus_days=applied_referee_bonus_days_from_referral,
-                final_end_date=final_end_date_for_user.strftime('%Y-%m-%d'),
+                final_end_date=final_end_date_for_user.strftime('%d.%m.%Y'),
                 inviter_name=inviter_name_display,
                 config_link=config_link,
             )
@@ -163,14 +163,14 @@ async def process_successful_payment(session: AsyncSession, bot: Bot,
                 "payment_successful_with_promo_full",
                 months=subscription_months,
                 bonus_days=applied_promo_bonus_days,
-                end_date=final_end_date_for_user.strftime('%Y-%m-%d'),
+                end_date=final_end_date_for_user.strftime('%d.%m.%Y'),
                 config_link=config_link,
             )
         elif final_end_date_for_user:
             details_message = _(
                 "payment_successful_full",
                 months=subscription_months,
-                end_date=final_end_date_for_user.strftime('%Y-%m-%d'),
+                end_date=final_end_date_for_user.strftime('%d.%m.%Y'),
                 config_link=config_link,
             )
         else:

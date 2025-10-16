@@ -201,7 +201,7 @@ async def get_user_active_subscription_end_date_str(
             Subscription.end_date.desc()).limit(1))
     result = await session.execute(stmt)
     end_date_obj = result.scalar_one_or_none()
-    return end_date_obj.strftime('%Y-%m-%d') if end_date_obj else None
+    return end_date_obj.strftime('%d.%m.%Y') if end_date_obj else None
 
 
 async def find_subscription_for_notification_update(

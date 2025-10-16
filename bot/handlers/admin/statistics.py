@@ -55,7 +55,7 @@ async def show_statistics_handler(callback: types.CallbackQuery,
                 user_info += f" ({payment.user.first_name})"
 
             payment_date_str = payment.created_at.strftime(
-                '%Y-%m-%d') if payment.created_at else "N/A"
+                '%d.%m.%Y') if payment.created_at else "N/A"
 
             stats_text_parts.append(
                 _("admin_stats_payment_item",
@@ -76,7 +76,7 @@ async def show_statistics_handler(callback: types.CallbackQuery,
 
         sync_time_val = sync_status_model.last_sync_time
         sync_time_str = sync_time_val.strftime(
-            '%Y-%m-%d %H:%M:%S UTC') if sync_time_val else "N/A"
+            '%d.%m.%Y %H:%M:%S UTC') if sync_time_val else "N/A"
 
         details_val = sync_status_model.details
         details_str = (details_val[:100] +

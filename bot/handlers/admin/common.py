@@ -133,15 +133,20 @@ async def admin_extend_subscription_handler(
     _ = lambda key, **kwargs: i18n.gettext(current_lang, key, **kwargs) if i18n else key
     
     try:
+        from db.dal import user_dal
+        
         parts = callback.data.split(":")
         target_user_id = int(parts[1])
         action = parts[2]
         
+        db_user = await user_dal.get_user_by_id(session, target_user_id)
+        user_name = f"{db_user.first_name or ''} {db_user.last_name or ''}".strip() if db_user else f"ID{target_user_id}"
+        
         if action == "decline":
             await callback.message.edit_text(
-                _("admin_payment_declined", user_id=target_user_id)
+                _("admin_payment_declined", user_name=user_name, user_id=target_user_id)
             )
-            await callback.answer(_("admin_payment_declined", user_id=target_user_id))
+            await callback.answer(_("admin_payment_declined", user_name=user_name, user_id=target_user_id))
             return
         
         days_to_extend = int(action)
@@ -155,17 +160,15 @@ async def admin_extend_subscription_handler(
         
         if new_end_date:
             await callback.message.edit_text(
-                _("admin_subscription_extended", user_id=target_user_id, days=days_to_extend) +
-                f"\n📅 Новая дата окончания: {new_end_date.strftime('%Y-%m-%d %H:%M')}"
+                _("admin_subscription_extended", user_name=user_name, user_id=target_user_id, days=days_to_extend) +
+                f"\n📅 Новая дата окончания: <b>{new_end_date.strftime('%d.%m.%Y')}</b>"
             )
             
             try:
-                from db.dal import user_dal
-                db_user = await user_dal.get_user_by_id(session, target_user_id)
                 user_lang = db_user.language_code if db_user and db_user.language_code else settings.DEFAULT_LANGUAGE
                 user_msg = i18n.gettext(user_lang, "subscription_extended_by_admin", 
                                        days=days_to_extend,
-                                       end_date=new_end_date.strftime('%Y-%m-%d %H:%M'))
+                                       end_date=new_end_date.strftime('%d.%m.%Y'))
                 await bot.send_message(target_user_id, user_msg)
             except Exception as e:
                 logging.warning(f"Failed to notify user {target_user_id} about extension: {e}")
@@ -174,7 +177,7 @@ async def admin_extend_subscription_handler(
         else:
             await callback.answer("❌ Ошибка продления подписки", show_alert=True)
             await callback.message.edit_text(
-                _("admin_extend_error", user_id=target_user_id, error="Ошибка в subscription_service")
+                f"❌ Ошибка продления подписки для {user_name} (id{target_user_id})"
             )
             
     except (ValueError, IndexError) as e:
