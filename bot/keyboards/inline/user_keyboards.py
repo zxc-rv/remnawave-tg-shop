@@ -4,6 +4,8 @@ from typing import Dict, Optional, List
 
 from config.settings import Settings
 
+# test
+
 
 def get_main_menu_inline_keyboard(
     lang: str, i18n_instance, settings: Settings, show_trial_button: bool = False
