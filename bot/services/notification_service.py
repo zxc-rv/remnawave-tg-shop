@@ -10,9 +10,14 @@ from sqlalchemy.orm import sessionmaker
 from bot.middlewares.i18n import JsonI18n
 
 
-async def notify_admins(bot: Bot, settings: Settings, i18n: JsonI18n,
-                        message_key: str, parse_mode: str | None = None,
-                        **kwargs) -> None:
+async def notify_admins(
+    bot: Bot,
+    settings: Settings,
+    i18n: JsonI18n,
+    message_key: str,
+    parse_mode: str | None = None,
+    **kwargs,
+) -> None:
     if not settings.ADMIN_IDS:
         return
     admin_lang = settings.DEFAULT_LANGUAGE
@@ -24,9 +29,14 @@ async def notify_admins(bot: Bot, settings: Settings, i18n: JsonI18n,
             logging.error(f"Failed to send admin notification to {admin_id}: {e}")
 
 
-async def notify_admin_new_trial(bot: Bot, settings: Settings, i18n: JsonI18n,
-                                 user_id: int, end_date: datetime) -> None:
-    end_date_str = end_date.strftime('%d.%m.%Y') if isinstance(end_date, datetime) else str(end_date)
+async def notify_admin_new_trial(
+    bot: Bot, settings: Settings, i18n: JsonI18n, user_id: int, end_date: datetime
+) -> None:
+    end_date_str = (
+        end_date.strftime("%d.%m.%Y")
+        if isinstance(end_date, datetime)
+        else str(end_date)
+    )
     await notify_admins(
         bot,
         settings,
@@ -37,9 +47,15 @@ async def notify_admin_new_trial(bot: Bot, settings: Settings, i18n: JsonI18n,
     )
 
 
-async def notify_admin_new_payment(bot: Bot, settings: Settings, i18n: JsonI18n,
-                                   user_id: int, months: int, amount: float,
-                                   currency: str | None = None) -> None:
+async def notify_admin_new_payment(
+    bot: Bot,
+    settings: Settings,
+    i18n: JsonI18n,
+    user_id: int,
+    months: int,
+    amount: float,
+    currency: str | None = None,
+) -> None:
     currency_symbol = currency or settings.DEFAULT_CURRENCY_SYMBOL
     await notify_admins(
         bot,
@@ -48,16 +64,20 @@ async def notify_admin_new_payment(bot: Bot, settings: Settings, i18n: JsonI18n,
         "admin_new_payment_notification",
         user_id=user_id,
         months=months,
-        amount=f"{amount:.2f}",notify_admin_promo_activation
+        amount=f"{amount:.2f}",
         currency=currency_symbol,
     )
 
 
-async def notify_admin_promo_activation(bot: Bot, settings: Settings,
-                                        i18n: JsonI18n, user_id: int,
-                                        user_name: str,
-                                        code: str,
-                                        bonus_days: int) -> None:
+async def notify_admin_promo_activation(
+    bot: Bot,
+    settings: Settings,
+    i18n: JsonI18n,
+    user_id: int,
+    user_name: str,
+    code: str,
+    bonus_days: int,
+) -> None:
     await notify_admins(
         bot,
         settings,
@@ -69,20 +89,31 @@ async def notify_admin_promo_activation(bot: Bot, settings: Settings,
         bonus_days=bonus_days,
     )
 
-async def notify_admin_payment_confirmation(bot: Bot, settings: Settings, i18n: JsonI18n,
-                                           user_id: int, user_name: str) -> None:
+
+async def notify_admin_payment_confirmation(
+    bot: Bot, settings: Settings, i18n: JsonI18n, user_id: int, user_name: str
+) -> None:
     if not settings.ADMIN_IDS:
         return
 
     admin_lang = settings.DEFAULT_LANGUAGE
-    msg = i18n.gettext(admin_lang, "admin_payment_confirmation_with_buttons",
-                       user_id=user_id, user_name=hd.quote(user_name))
+    msg = i18n.gettext(
+        admin_lang,
+        "admin_payment_confirmation_with_buttons",
+        user_id=user_id,
+        user_name=hd.quote(user_name),
+    )
 
-    from bot.keyboards.inline.admin_keyboards import get_payment_confirmation_admin_keyboard
+    from bot.keyboards.inline.admin_keyboards import (
+        get_payment_confirmation_admin_keyboard,
+    )
+
     reply_markup = get_payment_confirmation_admin_keyboard(admin_lang, i18n, user_id)
 
     for admin_id in settings.ADMIN_IDS:
         try:
-            await bot.send_message(admin_id, msg, reply_markup=reply_markup, parse_mode="HTML")
+            await bot.send_message(
+                admin_id, msg, reply_markup=reply_markup, parse_mode="HTML"
+            )
         except Exception as e:
             logging.error(f"Failed to send admin notification to {admin_id}: {e}")
