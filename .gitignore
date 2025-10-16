@@ -14,3 +14,6 @@ __pycache__/
 # Игнорировать Docker артефакты (если вдруг)
 *.log
 *.pid
+
+locales
+docker-compose.yml
