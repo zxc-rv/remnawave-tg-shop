@@ -177,7 +177,6 @@ async def start_command_handler(
                 f"New user {user_id} added to session. Referred by: {referred_by_user_id or 'N/A'}."
             )
         except Exception as e_create:
-
             logging.error(
                 f"Failed to add new user {user_id} to session: {e_create}",
                 exc_info=True,
@@ -205,7 +204,6 @@ async def start_command_handler(
                     f"Updated existing user {user_id} in session: {update_payload}"
                 )
             except Exception as e_update:
-
                 logging.error(
                     f"Failed to update existing user {user_id} in session: {e_update}",
                     exc_info=True,
@@ -272,7 +270,6 @@ async def select_language_callback_handler(
     try:
         updated = await user_dal.update_user_language(session, user_id, lang_code)
         if updated:
-
             i18n_data["current_language"] = lang_code
             _ = lambda key, **kwargs: i18n.gettext(lang_code, key, **kwargs)
             await callback.answer(_(key="language_set_alert"))
@@ -281,7 +278,6 @@ async def select_language_callback_handler(
             await callback.answer("Could not set language.", show_alert=True)
             return
     except Exception as e_lang_update:
-
         logging.error(
             f"Error updating lang for user {user_id}: {e_lang_update}", exc_info=True
         )
@@ -322,7 +318,6 @@ async def main_action_callback_handler(
             callback, i18n_data, settings, session
         )
     elif action == "my_subscription":
-
         await user_subscription_handlers.my_subscription_command_handler(
             callback,
             i18n_data,
@@ -345,7 +340,6 @@ async def main_action_callback_handler(
             callback, settings, i18n_data, subscription_service, session
         )
     elif action == "language":
-
         await language_command_handler(callback, i18n_data, settings)
     elif action == "back_to_main":
         await send_main_menu(
@@ -377,10 +371,13 @@ async def payment_action_callback_handler(
     if action == "confirm_paid":
         from db.dal import user_dal
 
-        db_user = await user_dal.get_user_by_id(session, user_id)
-        user_name = (
-            db_user.first_name if db_user and db_user.first_name else f"User {user_id}"
-        )
+        user_parts = []
+        if callback.from_user.first_name:
+            user_parts.append(callback.from_user.first_name)
+        if callback.from_user.username:
+            user_parts.append(f"(@{callback.from_user.username})")
+        user_parts.append(f"(ID: {user_id})")
+        user_name = " ".join(user_parts)
 
         from bot.services.notification_service import notify_admin_payment_confirmation
 
